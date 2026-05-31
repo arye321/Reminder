@@ -127,7 +127,7 @@ end
 -- -------------------------------------------------------------
 -- Custom UI Control Creators
 -- -------------------------------------------------------------
-local function CreateEditBox(parent, width, height)
+local function CreateEditBox(parent, width, height, numeric)
     local eb = CreateFrame("EditBox", nil, parent, "BackdropTemplate")
     eb:SetSize(width, height)
     eb:SetFontObject("ChatFontNormal")
@@ -137,7 +137,9 @@ local function CreateEditBox(parent, width, height)
     
     eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     eb:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-    eb:SetNumeric(true)
+    if numeric then
+        eb:SetNumeric(true)
+    end
     return eb
 end
 
@@ -394,7 +396,7 @@ typeLabel:SetText("Reminder Type:")
 local levelLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 levelLabel:SetPoint("TOPLEFT", 12, -85)
 levelLabel:SetText("Target Level:")
-local levelEditBox = CreateEditBox(rightPanel, 200, 24)
+local levelEditBox = CreateEditBox(rightPanel, 200, 24, true)
 levelEditBox:SetPoint("TOPLEFT", 12, -100)
 
 local profLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -406,14 +408,21 @@ profDropdown:SetPoint("TOPLEFT", 12, -100)
 local skillLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 skillLabel:SetPoint("TOPLEFT", 12, -135)
 skillLabel:SetText("Skill Level:")
-local skillEditBox = CreateEditBox(rightPanel, 200, 24)
+local skillEditBox = CreateEditBox(rightPanel, 200, 24, true)
 skillEditBox:SetPoint("TOPLEFT", 12, -150)
 
 local petLevelLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 petLevelLabel:SetPoint("TOPLEFT", 12, -85)
 petLevelLabel:SetText("Pet Level:")
-local petLevelEditBox = CreateEditBox(rightPanel, 200, 24)
+local petLevelEditBox = CreateEditBox(rightPanel, 200, 24, true)
 petLevelEditBox:SetPoint("TOPLEFT", 12, -100)
+
+-- Custom message fields (always visible)
+local msgLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+msgLabel:SetPoint("TOPLEFT", 12, -185)
+msgLabel:SetText("Custom Message (Optional):")
+local msgEditBox = CreateEditBox(rightPanel, 200, 24, false)
+msgEditBox:SetPoint("TOPLEFT", 12, -200)
 
 local saveBtn = CreateFrame("Button", nil, rightPanel, "UIPanelButtonTemplate")
 saveBtn:SetSize(90, 24)
@@ -468,6 +477,7 @@ local function ClearForm()
     profDropdown:SetValue("Alchemy")
     skillEditBox:SetText("")
     petLevelEditBox:SetText("")
+    msgEditBox:SetText("")
     saveBtn:SetText("Add")
     cancelBtn:Hide()
 end
@@ -492,6 +502,7 @@ local function RefreshList()
             row = CreateFrame("Frame", nil, scrollChild, "BackdropTemplate")
             row:SetSize(238, 40)
             ApplyBackdrop(row, 0.12, 0.12, 0.12, 0.7, 0.25, 0.25, 0.25, 1)
+            row:EnableMouse(true)
             
             -- Checkbox for enabled/disabled
             local check = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
@@ -534,15 +545,29 @@ local function RefreshList()
             PlaySound(856)
         end)
         
+        -- Tooltip showing custom message on row hover
+        row:SetScript("OnEnter", function(self)
+            if rem.message and rem.message ~= "" then
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText("Custom Message:", 1, 0.82, 0)
+                GameTooltip:AddLine(rem.message, 1, 1, 1, true)
+                GameTooltip:Show()
+            end
+        end)
+        row:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+        
         local desc = ""
+        local suffix = (rem.message and rem.message ~= "") and " *" or ""
         if rem.type == "level" then
-            desc = "Level |cfffff569" .. rem.value .. "|r"
+            desc = "Level |cfffff569" .. rem.value .. "|r" .. suffix
         elseif rem.type == "rested" then
-            desc = "Rested Place"
+            desc = "Rested Place" .. suffix
         elseif rem.type == "profession" then
-            desc = rem.profession .. " >= |cfffff569" .. rem.value .. "|r"
+            desc = rem.profession .. " >= |cfffff569" .. rem.value .. "|r" .. suffix
         elseif rem.type == "pet_level" then
-            desc = "Pet lvl >= |cfffff569" .. rem.value .. "|r"
+            desc = "Pet lvl >= |cfffff569" .. rem.value .. "|r" .. suffix
         end
         row.text:SetText(desc)
         
@@ -562,6 +587,8 @@ local function RefreshList()
             elseif rem.type == "pet_level" then
                 petLevelEditBox:SetText(tostring(rem.value))
             end
+            
+            msgEditBox:SetText(rem.message or "")
             
             saveBtn:SetText("Save")
             cancelBtn:Show()
@@ -619,10 +646,13 @@ saveBtn:SetScript("OnClick", function()
         end
     end
     
+    local customMsg = msgEditBox:GetText()
+    
     if editingReminder then
         editingReminder.type = selectedType
         editingReminder.value = value
         editingReminder.profession = profession
+        editingReminder.message = (customMsg ~= "") and customMsg or nil
         editingReminder.triggered = false
     else
         local newRem = {
@@ -630,6 +660,7 @@ saveBtn:SetScript("OnClick", function()
             type = selectedType,
             value = value,
             profession = profession,
+            message = (customMsg ~= "") and customMsg or nil,
             enabled = true,
             triggered = false,
         }
@@ -749,6 +780,9 @@ local function CheckReminders()
             if isMet then
                 if not rem.triggered then
                     rem.triggered = true
+                    if rem.message and rem.message ~= "" then
+                        msg = msg .. "\n\n|cff82c5ff" .. rem.message .. "|r"
+                    end
                     TriggerAlert(msg)
                 end
             else
