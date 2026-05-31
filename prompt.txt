@@ -1,0 +1,17 @@
+make a wow classic era interface 11508 addon called "Reminder". 
+
+the addon reminds with a simple small popup when X happens.
+
+tha user can choose the reminder condition
+
+for exmpale when getting level X
+
+when player is in reseted place (city/ inn)
+
+when proffession skill is above X [and] in big city (like stormwind, ironforge, dalaran, osv)
+
+when hunter pet is above X level.
+
+make a minmap button and command /reminder that opens the interface.
+
+the interface should have a list of reminders, and the user can add, edit, or remove reminders.

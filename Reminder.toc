@@ -1,0 +1,8 @@
+## Interface: 11508
+## Title: Reminder
+## Notes: Reminds you with a simple popup when specific conditions are met.
+## Author: Antigravity
+## Version: 1.0.0
+## SavedVariables: ReminderDB
+
+Reminder.lua
