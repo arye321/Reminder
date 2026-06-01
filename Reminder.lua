@@ -43,6 +43,7 @@ local professionList = {
 local typeList = {
     { value = "level", label = "Player Level" },
     { value = "rested", label = "Rested Place (Inn/City)" },
+    { value = "city", label = "In Big City" },
     { value = "profession", label = "Profession & City" },
     { value = "pet_level", label = "Hunter Pet Level" }
 }
@@ -462,8 +463,8 @@ local function UpdateFormFields(selectedType)
     elseif selectedType == "pet_level" then
         petLevelLabel:Show()
         petLevelEditBox:Show()
-    elseif selectedType == "rested" then
-        -- Rested place has no extra config fields
+    elseif selectedType == "rested" or selectedType == "city" then
+        -- Rested place or City has no extra config fields
     end
 end
 
@@ -568,6 +569,8 @@ local function RefreshList()
             desc = "Level |cfffff569" .. rem.value .. "|r" .. suffix
         elseif rem.type == "rested" then
             desc = "Rested Place" .. suffix
+        elseif rem.type == "city" then
+            desc = "In Big City" .. suffix
         elseif rem.type == "profession" then
             desc = rem.profession .. " >= |cfffff569" .. rem.value .. "|r" .. suffix
         elseif rem.type == "pet_level" then
@@ -772,6 +775,9 @@ local function CheckReminders()
             elseif rem.type == "rested" then
                 isMet = IsResting()
                 msg = "You are now in a Rested place (City/Inn)!"
+            elseif rem.type == "city" then
+                isMet = IsInBigCity()
+                msg = "You entered a Big City!"
             elseif rem.type == "profession" then
                 local rank = GetProfessionSkillRank(rem.profession)
                 isMet = (rank >= (rem.value or 0)) and IsInBigCity()
