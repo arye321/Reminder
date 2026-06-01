@@ -281,7 +281,7 @@ local function ShowNextAlert()
     
     if not alertFrame then
         alertFrame = CreateFrame("Frame", "ReminderAlertFrame", UIParent, "BackdropTemplate")
-        alertFrame:SetSize(320, 130)
+        alertFrame:SetSize(320, 160)
         alertFrame:SetPoint("CENTER", 0, 150)
         alertFrame:SetFrameStrata("DIALOG")
         alertFrame:EnableMouse(true)
@@ -304,9 +304,9 @@ local function ShowNextAlert()
         title:SetTextColor(0.85, 0.7, 0.2)
         alertFrame.title = title
         
-        local message = alertFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        message:SetPoint("TOPLEFT", 15, -60)
-        message:SetPoint("BOTTOMRIGHT", -15, 40)
+        local message = alertFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        message:SetPoint("TOPLEFT", 15, -55)
+        message:SetPoint("BOTTOMRIGHT", -15, 45)
         message:SetJustifyH("CENTER")
         message:SetJustifyV("TOP")
         message:SetWordWrap(true)
@@ -329,6 +329,10 @@ local function ShowNextAlert()
 end
 
 local function TriggerAlert(message)
+    -- Log to chat frame as a fallback record
+    local chatMsg = message:gsub("\n\n", " - ")
+    DEFAULT_CHAT_FRAME:AddMessage("|cfffff569[Reminder]|r " .. chatMsg)
+    
     tinsert(alertQueue, message)
     if not alertFrame or not alertFrame:IsShown() then
         ShowNextAlert()
