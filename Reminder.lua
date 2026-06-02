@@ -26,24 +26,24 @@ local bigCities = {
 }
 
 local professionList = {
-    { value = "Alchemy", label = "Alchemy" },
-    { value = "Blacksmithing", label = "Blacksmithing" },
-    { value = "Cooking", label = "Cooking" },
-    { value = "Enchanting", label = "Enchanting" },
-    { value = "Engineering", label = "Engineering" },
-    { value = "First Aid", label = "First Aid" },
-    { value = "Fishing", label = "Fishing" },
-    { value = "Herbalism", label = "Herbalism" },
+    { value = "Alchemy",        label = "Alchemy" },
+    { value = "Blacksmithing",  label = "Blacksmithing" },
+    { value = "Cooking",        label = "Cooking" },
+    { value = "Enchanting",     label = "Enchanting" },
+    { value = "Engineering",    label = "Engineering" },
+    { value = "First Aid",      label = "First Aid" },
+    { value = "Fishing",        label = "Fishing" },
+    { value = "Herbalism",      label = "Herbalism" },
     { value = "Leatherworking", label = "Leatherworking" },
-    { value = "Mining", label = "Mining" },
-    { value = "Skinning", label = "Skinning" },
-    { value = "Tailoring", label = "Tailoring" }
+    { value = "Mining",         label = "Mining" },
+    { value = "Skinning",       label = "Skinning" },
+    { value = "Tailoring",      label = "Tailoring" }
 }
 
 local typeList = {
-    { value = "level", label = "Player Level" },
-    { value = "rested", label = "Rested" },
-    { value = "city", label = "City" },
+    { value = "level",     label = "Player Level" },
+    { value = "rested",    label = "Rested" },
+    { value = "city",      label = "City" },
     -- { value = "profession", label = "Profession & City" },
     { value = "pet_level", label = "Hunter Pet Level" }
 }
@@ -74,7 +74,7 @@ local function IsInBigCity()
             return true
         end
     end
-    
+
     local subzone = GetMinimapZoneText()
     if subzone and subzone ~= "" then
         subzone = subzone:lower()
@@ -90,7 +90,7 @@ end
 local function GetProfessionSkillRank(name)
     if not name or name == "" then return 0 end
     name = name:lower()
-    
+
     -- Expand collapsed headers to scan all skills
     local collapsedHeaders = {}
     local numSkills = GetNumSkillLines()
@@ -104,7 +104,7 @@ local function GetProfessionSkillRank(name)
         end
         i = i + 1
     end
-    
+
     local foundRank = 0
     for j = 1, GetNumSkillLines() do
         local skillName, isHeader, _, rank = GetSkillLineInfo(j)
@@ -113,7 +113,7 @@ local function GetProfessionSkillRank(name)
             break
         end
     end
-    
+
     -- Restore collapsed states in reverse order
     for j = GetNumSkillLines(), 1, -1 do
         local _, isHeader = GetSkillLineInfo(j)
@@ -121,7 +121,7 @@ local function GetProfessionSkillRank(name)
             CollapseSkillHeader(j)
         end
     end
-    
+
     return foundRank
 end
 
@@ -135,7 +135,7 @@ local function CreateEditBox(parent, width, height, numeric)
     eb:SetAutoFocus(false)
     eb:SetTextInsets(6, 6, 0, 0)
     ApplyBackdrop(eb, 0, 0, 0, 0.6, 0.4, 0.4, 0.4, 1)
-    
+
     eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     eb:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
     if numeric then
@@ -150,33 +150,33 @@ local function CreateDropdown(parent, width, height, options, callback)
     local dropdown = CreateFrame("Button", nil, parent, "BackdropTemplate")
     dropdown:SetSize(width, height)
     ApplyBackdrop(dropdown, 0.1, 0.1, 0.1, 0.8, 0.4, 0.4, 0.4, 1)
-    
+
     local text = dropdown:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     text:SetPoint("LEFT", 8, 0)
     text:SetPoint("RIGHT", -24, 0)
     text:SetJustifyH("LEFT")
     dropdown.text = text
-    
+
     local arrow = dropdown:CreateTexture(nil, "OVERLAY")
     arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
     arrow:SetSize(16, 16)
     arrow:SetPoint("RIGHT", -4, 0)
     dropdown.arrow = arrow
-    
+
     local menu = CreateFrame("Frame", nil, dropdown, "BackdropTemplate")
     ApplyBackdrop(menu, 0.05, 0.05, 0.05, 0.95, 0.4, 0.4, 0.4, 1)
     menu:SetFrameStrata("DIALOG")
     menu:Hide()
     dropdown.menu = menu
-    
+
     local buttons = {}
-    
+
     local function UpdateOptions(newOptions)
         options = newOptions
         for _, btn in ipairs(buttons) do
             btn:Hide()
         end
-        
+
         local menuHeight = 6
         for i, opt in ipairs(options) do
             local btn = buttons[i]
@@ -185,22 +185,22 @@ local function CreateDropdown(parent, width, height, options, callback)
                 btn:SetHeight(18)
                 btn:SetNormalFontObject("GameFontHighlightSmall")
                 btn:SetHighlightFontObject("GameFontNormalSmall")
-                
+
                 local btnHighlight = btn:CreateTexture(nil, "BACKGROUND")
                 btnHighlight:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
                 btnHighlight:SetBlendMode("ADD")
                 btnHighlight:SetAllPoints()
                 btn:SetHighlightTexture(btnHighlight)
-                
+
                 local btnText = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
                 btnText:SetPoint("LEFT", 6, 0)
                 btnText:SetPoint("RIGHT", -6, 0)
                 btnText:SetJustifyH("LEFT")
                 btn.text = btnText
-                
+
                 buttons[i] = btn
             end
-            
+
             btn.text:SetText(opt.label or opt.value)
             btn:SetWidth(width - 8)
             btn:SetPoint("TOPLEFT", menu, "TOPLEFT", 4, -4 - (i - 1) * 18)
@@ -216,7 +216,7 @@ local function CreateDropdown(parent, width, height, options, callback)
         end
         menu:SetSize(width, menuHeight)
     end
-    
+
     dropdown:SetScript("OnClick", function()
         if menu:IsShown() then
             menu:Hide()
@@ -232,7 +232,7 @@ local function CreateDropdown(parent, width, height, options, callback)
         end
         PlaySound(856)
     end)
-    
+
     dropdown.UpdateOptions = UpdateOptions
     dropdown.SetValue = function(self, val)
         self.selectedValue = val
@@ -247,7 +247,7 @@ local function CreateDropdown(parent, width, height, options, callback)
     dropdown.GetValue = function(self)
         return self.selectedValue
     end
-    
+
     UpdateOptions(options)
     return dropdown
 end
@@ -277,9 +277,9 @@ local function ShowNextAlert()
         if alertFrame then alertFrame:Hide() end
         return
     end
-    
+
     local msg = table.remove(alertQueue, 1)
-    
+
     if not alertFrame then
         alertFrame = CreateFrame("Frame", "ReminderAlertFrame", UIParent, "BackdropTemplate")
         alertFrame:SetSize(320, 160)
@@ -290,21 +290,21 @@ local function ShowNextAlert()
         alertFrame:RegisterForDrag("LeftButton")
         alertFrame:SetScript("OnDragStart", alertFrame.StartMoving)
         alertFrame:SetScript("OnDragStop", alertFrame.StopMovingOrSizing)
-        
+
         ApplyBackdrop(alertFrame, 0.08, 0.08, 0.08, 0.95, 0.85, 0.7, 0.2, 1) -- Gold border
-        
+
         local icon = alertFrame:CreateTexture(nil, "OVERLAY")
         icon:SetTexture("Interface\\Icons\\INV_Misc_PocketWatch_01")
         icon:SetSize(24, 24)
         icon:SetPoint("TOP", 0, -12)
         alertFrame.icon = icon
-        
+
         local title = alertFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         title:SetPoint("TOP", icon, "BOTTOM", 0, -6)
         title:SetText("Reminder Alert!")
         title:SetTextColor(0.85, 0.7, 0.2)
         alertFrame.title = title
-        
+
         local message = alertFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         message:SetPoint("TOPLEFT", 15, -55)
         message:SetPoint("BOTTOMRIGHT", -15, 45)
@@ -312,7 +312,7 @@ local function ShowNextAlert()
         message:SetJustifyV("TOP")
         message:SetWordWrap(true)
         alertFrame.message = message
-        
+
         local okBtn = CreateFrame("Button", nil, alertFrame, "UIPanelButtonTemplate")
         okBtn:SetSize(90, 22)
         okBtn:SetPoint("BOTTOM", 0, 12)
@@ -323,7 +323,7 @@ local function ShowNextAlert()
         end)
         alertFrame.okBtn = okBtn
     end
-    
+
     alertFrame.message:SetText(msg)
     alertFrame:Show()
     PlaySound(18019) -- Raid warning sound
@@ -333,7 +333,7 @@ local function TriggerAlert(message)
     -- Log to chat frame as a fallback record
     local chatMsg = message:gsub("\n\n", " - ")
     DEFAULT_CHAT_FRAME:AddMessage("|cfffff569[Reminder]|r " .. chatMsg)
-    
+
     tinsert(alertQueue, message)
     if not alertFrame or not alertFrame:IsShown() then
         ShowNextAlert()
@@ -451,7 +451,7 @@ local function UpdateFormFields(selectedType)
     skillEditBox:Hide()
     petLevelLabel:Hide()
     petLevelEditBox:Hide()
-    
+
     if selectedType == "level" then
         levelLabel:Show()
         levelEditBox:Show()
@@ -497,9 +497,9 @@ local function RefreshList()
     for _, row in ipairs(listRows) do
         row:Hide()
     end
-    
+
     if not ReminderDB or not ReminderDB.reminders then return end
-    
+
     local yOffset = 0
     for i, rem in ipairs(ReminderDB.reminders) do
         local row = listRows[i]
@@ -508,13 +508,13 @@ local function RefreshList()
             row:SetSize(238, 40)
             ApplyBackdrop(row, 0.12, 0.12, 0.12, 0.7, 0.25, 0.25, 0.25, 1)
             row:EnableMouse(true)
-            
+
             -- Checkbox for enabled/disabled
             local check = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
             check:SetSize(20, 20)
             check:SetPoint("LEFT", 5, 0)
             row.check = check
-            
+
             -- Description text
             local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
             text:SetPoint("LEFT", check, "RIGHT", 5, 0)
@@ -522,24 +522,24 @@ local function RefreshList()
             text:SetJustifyH("LEFT")
             text:SetWordWrap(true)
             row.text = text
-            
+
             -- Edit button
             local editBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
             editBtn:SetSize(38, 18)
             editBtn:SetPoint("RIGHT", -44, 0)
             editBtn:SetText("Edit")
             row.editBtn = editBtn
-            
+
             -- Delete button
             local delBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
             delBtn:SetSize(36, 18)
             delBtn:SetPoint("RIGHT", -5, 0)
             delBtn:SetText("Del")
             row.delBtn = delBtn
-            
+
             listRows[i] = row
         end
-        
+
         -- Populate row content
         row.check:SetChecked(rem.enabled)
         row.check:SetScript("OnClick", function(self)
@@ -549,7 +549,7 @@ local function RefreshList()
             end
             PlaySound(856)
         end)
-        
+
         -- Tooltip showing custom message on row hover
         row:SetScript("OnEnter", function(self)
             if rem.message and rem.message ~= "" then
@@ -562,22 +562,22 @@ local function RefreshList()
         row:SetScript("OnLeave", function()
             GameTooltip:Hide()
         end)
-        
+
         local desc = ""
         local suffix = (rem.message and rem.message ~= "") and " *" or ""
         if rem.type == "level" then
             desc = "Level |cfffff569" .. rem.value .. "|r" .. suffix
         elseif rem.type == "rested" then
-            desc = "Only Rested" .. suffix
+            desc = "Rested" .. suffix
         elseif rem.type == "city" then
-            desc = "Only City" .. suffix
+            desc = "In City" .. suffix
         elseif rem.type == "profession" then
             desc = rem.profession .. " >= |cfffff569" .. rem.value .. "|r" .. suffix
         elseif rem.type == "pet_level" then
             desc = "Pet lvl >= |cfffff569" .. rem.value .. "|r" .. suffix
         end
         row.text:SetText(desc)
-        
+
         -- Hooks
         row.editBtn:SetScript("OnClick", function()
             PlaySound(856)
@@ -585,7 +585,7 @@ local function RefreshList()
             formTitle:SetText("Edit Reminder")
             typeDropdown:SetValue(rem.type)
             UpdateFormFields(rem.type)
-            
+
             if rem.type == "level" then
                 levelEditBox:SetText(tostring(rem.value))
             elseif rem.type == "profession" then
@@ -594,13 +594,13 @@ local function RefreshList()
             elseif rem.type == "pet_level" then
                 petLevelEditBox:SetText(tostring(rem.value))
             end
-            
+
             msgEditBox:SetText(rem.message or "")
-            
+
             saveBtn:SetText("Save")
             cancelBtn:Show()
         end)
-        
+
         row.delBtn:SetScript("OnClick", function()
             PlaySound(856)
             for j, r in ipairs(ReminderDB.reminders) do
@@ -614,12 +614,12 @@ local function RefreshList()
             end
             RefreshList()
         end)
-        
+
         row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset)
         row:Show()
         yOffset = yOffset + 44
     end
-    
+
     scrollChild:SetHeight(yOffset > 0 and yOffset or 1)
 end
 
@@ -628,7 +628,7 @@ saveBtn:SetScript("OnClick", function()
     local selectedType = typeDropdown:GetValue()
     local value = 0
     local profession = ""
-    
+
     if selectedType == "level" then
         local text = levelEditBox:GetText()
         value = tonumber(text)
@@ -652,9 +652,9 @@ saveBtn:SetScript("OnClick", function()
             return
         end
     end
-    
+
     local customMsg = msgEditBox:GetText()
-    
+
     if editingReminder then
         editingReminder.type = selectedType
         editingReminder.value = value
@@ -673,7 +673,7 @@ saveBtn:SetScript("OnClick", function()
         }
         tinsert(ReminderDB.reminders, newRem)
     end
-    
+
     RefreshList()
     ClearForm()
     PlaySound(856)
@@ -712,7 +712,7 @@ local function UpdateMinimapPosition()
     local x = radius * cos(rad(angle))
     local y = radius * sin(rad(angle))
     MinimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
-    
+
     if ReminderDB.minimapHide then
         MinimapButton:Hide()
     else
@@ -763,12 +763,12 @@ end)
 -- -------------------------------------------------------------
 local function CheckReminders()
     if not ReminderDB or not ReminderDB.reminders then return end
-    
+
     for _, rem in ipairs(ReminderDB.reminders) do
         if rem.enabled then
             local isMet = false
             local msg = ""
-            
+
             if rem.type == "level" then
                 isMet = UnitLevel("player") >= (rem.value or 0)
                 msg = "Player Level Reached: |cfffff569" .. rem.value .. "|r!"
@@ -781,12 +781,13 @@ local function CheckReminders()
             elseif rem.type == "profession" then
                 local rank = GetProfessionSkillRank(rem.profession)
                 isMet = (rank >= (rem.value or 0)) and IsInBigCity()
-                msg = "City Profession Skill: |cfffff569" .. rem.profession .. "|r is " .. rank .. " (Target >= " .. rem.value .. ")!"
+                msg = "City Profession Skill: |cfffff569" ..
+                    rem.profession .. "|r is " .. rank .. " (Target >= " .. rem.value .. ")!"
             elseif rem.type == "pet_level" then
                 isMet = UnitExists("pet") and (UnitLevel("pet") >= (rem.value or 0))
                 msg = "Hunter Pet Level Reached: |cfffff569" .. rem.value .. "|r!"
             end
-            
+
             if isMet then
                 if not rem.triggered then
                     rem.triggered = true
@@ -824,7 +825,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1, ...)
         ReminderDB.reminders = ReminderDB.reminders or {}
         if ReminderDB.minimapPos == nil then ReminderDB.minimapPos = 45 end
         if ReminderDB.minimapHide == nil then ReminderDB.minimapHide = false end
-        
+
         -- Register slash commands
         SLASH_REMINDER1 = "/reminder"
         SlashCmdList["REMINDER"] = function()
@@ -835,14 +836,14 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1, ...)
             end
             PlaySound(856)
         end
-        
+
         -- Init Position
         UpdateMinimapPosition()
-        
+
         -- Prepare initial view
         ClearForm()
         RefreshList()
-        
+
         self:UnregisterEvent("ADDON_LOADED")
     elseif event == "PLAYER_ENTERING_WORLD" then
         -- Wait 2 seconds to make sure zone name, coordinates, and skills are loaded
