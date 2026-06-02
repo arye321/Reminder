@@ -42,9 +42,9 @@ local professionList = {
 
 local typeList = {
     { value = "level", label = "Player Level" },
-    { value = "rested", label = "Rested Place (Inn/City)" },
-    { value = "city", label = "In Big City" },
-    { value = "profession", label = "Profession & City" },
+    { value = "rested", label = "Rested" },
+    { value = "city", label = "City" },
+    -- { value = "profession", label = "Profession & City" },
     { value = "pet_level", label = "Hunter Pet Level" }
 }
 
@@ -568,9 +568,9 @@ local function RefreshList()
         if rem.type == "level" then
             desc = "Level |cfffff569" .. rem.value .. "|r" .. suffix
         elseif rem.type == "rested" then
-            desc = "Rested Place" .. suffix
+            desc = "Only Rested" .. suffix
         elseif rem.type == "city" then
-            desc = "In Big City" .. suffix
+            desc = "Only City" .. suffix
         elseif rem.type == "profession" then
             desc = rem.profession .. " >= |cfffff569" .. rem.value .. "|r" .. suffix
         elseif rem.type == "pet_level" then
@@ -773,8 +773,8 @@ local function CheckReminders()
                 isMet = UnitLevel("player") >= (rem.value or 0)
                 msg = "Player Level Reached: |cfffff569" .. rem.value .. "|r!"
             elseif rem.type == "rested" then
-                isMet = IsResting()
-                msg = "You are now in a Rested place (City/Inn)!"
+                isMet = IsResting() and not IsInBigCity()
+                msg = "You are now in a Rested place (Inn)!"
             elseif rem.type == "city" then
                 isMet = IsInBigCity()
                 msg = "You entered a Big City!"
