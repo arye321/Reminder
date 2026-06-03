@@ -271,6 +271,7 @@ end)
 -- -------------------------------------------------------------
 local alertQueue = {}
 local alertFrame = nil
+local RefreshList
 
 local function ShowNextAlert()
     if #alertQueue == 0 then
@@ -278,7 +279,9 @@ local function ShowNextAlert()
         return
     end
 
-    local msg = table.remove(alertQueue, 1)
+    local alertData = table.remove(alertQueue, 1)
+    local msg = alertData.text
+    local reminderId = alertData.id
 
     if not alertFrame then
         alertFrame = CreateFrame("Frame", "ReminderAlertFrame", UIParent, "BackdropTemplate")
@@ -315,13 +318,46 @@ local function ShowNextAlert()
 
         local okBtn = CreateFrame("Button", nil, alertFrame, "UIPanelButtonTemplate")
         okBtn:SetSize(90, 22)
-        okBtn:SetPoint("BOTTOM", 0, 12)
         okBtn:SetText("OK")
         okBtn:SetScript("OnClick", function()
             PlaySound(856)
             ShowNextAlert()
         end)
         alertFrame.okBtn = okBtn
+
+        local removeBtn = CreateFrame("Button", nil, alertFrame, "UIPanelButtonTemplate")
+        removeBtn:SetSize(110, 22)
+        removeBtn:SetText("Done, remove")
+        removeBtn:SetScript("OnClick", function()
+            PlaySound(856)
+            local currentReminderId = alertFrame.currentReminderId
+            if currentReminderId and ReminderDB and ReminderDB.reminders then
+                for idx, rem in ipairs(ReminderDB.reminders) do
+                    if rem.id == currentReminderId then
+                        table.remove(ReminderDB.reminders, idx)
+                        break
+                    end
+                end
+                print("|cfffff569[Reminder]|r Removed reminder: " .. msg)
+                RefreshList()
+            end
+            ShowNextAlert()
+        end)
+        alertFrame.removeBtn = removeBtn
+    end
+
+    alertFrame.currentReminderId = reminderId
+
+    if reminderId then
+        alertFrame.okBtn:ClearAllPoints()
+        alertFrame.okBtn:SetPoint("BOTTOMLEFT", alertFrame, "BOTTOMLEFT", 40, 12)
+        alertFrame.removeBtn:ClearAllPoints()
+        alertFrame.removeBtn:SetPoint("BOTTOMRIGHT", alertFrame, "BOTTOMRIGHT", -40, 12)
+        alertFrame.removeBtn:Show()
+    else
+        alertFrame.okBtn:ClearAllPoints()
+        alertFrame.okBtn:SetPoint("BOTTOM", alertFrame, "BOTTOM", 0, 12)
+        alertFrame.removeBtn:Hide()
     end
 
     alertFrame.message:SetText(msg)
@@ -329,12 +365,12 @@ local function ShowNextAlert()
     PlaySound(18019) -- Raid warning sound
 end
 
-local function TriggerAlert(message)
+local function TriggerAlert(message, reminderId)
     -- Log to chat frame as a fallback record
     local chatMsg = message:gsub("\n\n", " - ")
     DEFAULT_CHAT_FRAME:AddMessage("|cfffff569[Reminder]|r " .. chatMsg)
 
-    tinsert(alertQueue, message)
+    tinsert(alertQueue, { text = message, id = reminderId })
     if not alertFrame or not alertFrame:IsShown() then
         ShowNextAlert()
     end
@@ -463,8 +499,8 @@ local function UpdateFormFields(selectedType)
     elseif selectedType == "pet_level" then
         petLevelLabel:Show()
         petLevelEditBox:Show()
-    elseif selectedType == "rested" or selectedType == "city" then
-        -- Rested place or City has no extra config fields
+    elseif selectedType == "rested" then
+
     end
 end
 
@@ -492,7 +528,7 @@ end
 -- -------------------------------------------------------------
 local listRows = {}
 
-local function RefreshList()
+RefreshList = function()
     -- Hide all rows first
     for _, row in ipairs(listRows) do
         row:Hide()
@@ -522,6 +558,14 @@ local function RefreshList()
             text:SetJustifyH("LEFT")
             text:SetWordWrap(true)
             row.text = text
+
+            -- Custom message text
+            local msgText = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+            msgText:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 30, 5)
+            msgText:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -88, 5)
+            msgText:SetJustifyH("LEFT")
+            msgText:SetWordWrap(false)
+            row.msgText = msgText
 
             -- Edit button
             local editBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
@@ -563,18 +607,30 @@ local function RefreshList()
             GameTooltip:Hide()
         end)
 
+        -- Re-anchor dynamically depending on whether there is a message
+        row.text:ClearAllPoints()
+        if rem.message and rem.message ~= "" then
+            row.text:SetPoint("TOPLEFT", row, "TOPLEFT", 30, -5)
+            row.text:SetPoint("TOPRIGHT", row, "TOPRIGHT", -88, -5)
+            row.msgText:SetText(rem.message)
+            row.msgText:Show()
+        else
+            row.text:SetPoint("LEFT", row.check, "RIGHT", 5, 0)
+            row.text:SetPoint("RIGHT", row, "RIGHT", -88, 0)
+            row.msgText:Hide()
+        end
+
         local desc = ""
-        local suffix = (rem.message and rem.message ~= "") and " *" or ""
         if rem.type == "level" then
-            desc = "Level |cfffff569" .. rem.value .. "|r" .. suffix
+            desc = "Level |cfffff569" .. rem.value .. "|r"
         elseif rem.type == "rested" then
-            desc = "Rested" .. suffix
+            desc = "Rested"
         elseif rem.type == "city" then
-            desc = "In City" .. suffix
+            desc = "In City"
         elseif rem.type == "profession" then
-            desc = rem.profession .. " >= |cfffff569" .. rem.value .. "|r" .. suffix
+            desc = rem.profession .. " >= |cfffff569" .. rem.value .. "|r"
         elseif rem.type == "pet_level" then
-            desc = "Pet lvl >= |cfffff569" .. rem.value .. "|r" .. suffix
+            desc = "Pet lvl >= |cfffff569" .. rem.value .. "|r"
         end
         row.text:SetText(desc)
 
@@ -773,8 +829,8 @@ local function CheckReminders()
                 isMet = UnitLevel("player") >= (rem.value or 0)
                 msg = "Player Level Reached: |cfffff569" .. rem.value .. "|r!"
             elseif rem.type == "rested" then
-                isMet = IsResting() and not IsInBigCity()
-                msg = "You are now in a Rested place (Inn)!"
+                isMet = IsResting()
+                msg = "You are now in a Rested place."
             elseif rem.type == "city" then
                 isMet = IsInBigCity()
                 msg = "You entered a Big City!"
@@ -794,7 +850,7 @@ local function CheckReminders()
                     if rem.message and rem.message ~= "" then
                         msg = msg .. "\n\n|cff82c5ff" .. rem.message .. "|r"
                     end
-                    TriggerAlert(msg)
+                    TriggerAlert(msg, rem.id)
                 end
             else
                 rem.triggered = false
