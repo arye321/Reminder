@@ -429,41 +429,69 @@ local formTitle = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLar
 formTitle:SetPoint("TOPLEFT", 12, -12)
 formTitle:SetText("Add Reminder")
 
-local typeLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-typeLabel:SetPoint("TOPLEFT", 12, -35)
-typeLabel:SetText("Reminder Type:")
+local subtitle = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+subtitle:SetPoint("TOPLEFT", 12, -35)
+subtitle:SetText("Conditions:")
 
--- Dynamic field widgets
-local levelLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-levelLabel:SetPoint("TOPLEFT", 12, -85)
-levelLabel:SetText("Target Level:")
-local levelEditBox = CreateEditBox(rightPanel, 200, 24, true)
-levelEditBox:SetPoint("TOPLEFT", 12, -100)
+local function CreateCheckButton(parent, width, height, labelText)
+    local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+    check:SetSize(width, height)
+    
+    local text = check:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    text:SetPoint("LEFT", check, "RIGHT", 6, 0)
+    text:SetText(labelText)
+    check.text = text
+    
+    return check
+end
 
-local profLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-profLabel:SetPoint("TOPLEFT", 12, -85)
-profLabel:SetText("Profession:")
-local profDropdown = CreateDropdown(rightPanel, 200, 24, professionList)
-profDropdown:SetPoint("TOPLEFT", 12, -100)
+local function SetControlEnabled(control, enabled)
+    if enabled then
+        control:Enable()
+        control:SetAlpha(1)
+    else
+        control:Disable()
+        control:SetAlpha(0.5)
+        if control.ClearFocus then
+            control:ClearFocus()
+        end
+    end
+end
 
-local skillLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-skillLabel:SetPoint("TOPLEFT", 12, -135)
-skillLabel:SetText("Skill Level:")
-local skillEditBox = CreateEditBox(rightPanel, 200, 24, true)
-skillEditBox:SetPoint("TOPLEFT", 12, -150)
+-- Checkbox conditions setup
+local levelCheck = CreateCheckButton(rightPanel, 20, 20, "Player Level >=")
+levelCheck:SetPoint("TOPLEFT", 12, -52)
 
-local petLevelLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-petLevelLabel:SetPoint("TOPLEFT", 12, -85)
-petLevelLabel:SetText("Pet Level:")
-local petLevelEditBox = CreateEditBox(rightPanel, 200, 24, true)
-petLevelEditBox:SetPoint("TOPLEFT", 12, -100)
+local levelEditBox = CreateEditBox(rightPanel, 70, 20, true)
+levelEditBox:SetPoint("TOPLEFT", 130, -52)
+
+local restedCheck = CreateCheckButton(rightPanel, 20, 20, "Is Rested")
+restedCheck:SetPoint("TOPLEFT", 12, -77)
+
+local cityCheck = CreateCheckButton(rightPanel, 20, 20, "In Big City")
+cityCheck:SetPoint("TOPLEFT", 12, -102)
+
+local profCheck = CreateCheckButton(rightPanel, 20, 20, "Profession Skill")
+profCheck:SetPoint("TOPLEFT", 12, -127)
+
+local profDropdown = CreateDropdown(rightPanel, 110, 20, professionList)
+profDropdown:SetPoint("TOPLEFT", 12, -149)
+
+local skillEditBox = CreateEditBox(rightPanel, 80, 20, true)
+skillEditBox:SetPoint("TOPLEFT", 130, -149)
+
+local petCheck = CreateCheckButton(rightPanel, 20, 20, "Pet Level >=")
+petCheck:SetPoint("TOPLEFT", 12, -177)
+
+local petLevelEditBox = CreateEditBox(rightPanel, 80, 20, true)
+petLevelEditBox:SetPoint("TOPLEFT", 130, -177)
 
 -- Custom message fields (always visible)
 local msgLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-msgLabel:SetPoint("TOPLEFT", 12, -185)
+msgLabel:SetPoint("TOPLEFT", 12, -205)
 msgLabel:SetText("Custom Message (Optional):")
-local msgEditBox = CreateEditBox(rightPanel, 200, 24, false)
-msgEditBox:SetPoint("TOPLEFT", 12, -200)
+local msgEditBox = CreateEditBox(rightPanel, 200, 20, false)
+msgEditBox:SetPoint("TOPLEFT", 12, -220)
 
 local saveBtn = CreateFrame("Button", nil, rightPanel, "UIPanelButtonTemplate")
 saveBtn:SetSize(90, 24)
@@ -478,47 +506,57 @@ cancelBtn:Hide()
 
 local editingReminder = nil
 
-local function UpdateFormFields(selectedType)
-    levelLabel:Hide()
-    levelEditBox:Hide()
-    profLabel:Hide()
-    profDropdown:Hide()
-    skillLabel:Hide()
-    skillEditBox:Hide()
-    petLevelLabel:Hide()
-    petLevelEditBox:Hide()
-
-    if selectedType == "level" then
-        levelLabel:Show()
-        levelEditBox:Show()
-    elseif selectedType == "profession" then
-        profLabel:Show()
-        profDropdown:Show()
-        skillLabel:Show()
-        skillEditBox:Show()
-    elseif selectedType == "pet_level" then
-        petLevelLabel:Show()
-        petLevelEditBox:Show()
-    elseif selectedType == "rested" then
-
-    end
+local function UpdateFormStates()
+    SetControlEnabled(levelEditBox, levelCheck:GetChecked())
+    SetControlEnabled(profDropdown, profCheck:GetChecked())
+    SetControlEnabled(skillEditBox, profCheck:GetChecked())
+    SetControlEnabled(petLevelEditBox, petCheck:GetChecked())
 end
 
-local typeDropdown = CreateDropdown(rightPanel, 200, 24, typeList, function(val)
-    UpdateFormFields(val)
+levelCheck:SetScript("OnClick", function(self)
+    UpdateFormStates()
+    if self:GetChecked() then levelEditBox:SetFocus() end
+    PlaySound(856)
 end)
-typeDropdown:SetPoint("TOPLEFT", 12, -50)
+
+restedCheck:SetScript("OnClick", function(self)
+    PlaySound(856)
+end)
+
+cityCheck:SetScript("OnClick", function(self)
+    PlaySound(856)
+end)
+
+profCheck:SetScript("OnClick", function(self)
+    UpdateFormStates()
+    if self:GetChecked() then skillEditBox:SetFocus() end
+    PlaySound(856)
+end)
+
+petCheck:SetScript("OnClick", function(self)
+    UpdateFormStates()
+    if self:GetChecked() then petLevelEditBox:SetFocus() end
+    PlaySound(856)
+end)
 
 local function ClearForm()
     editingReminder = nil
     formTitle:SetText("Add Reminder")
-    typeDropdown:SetValue("level")
-    UpdateFormFields("level")
+    
+    levelCheck:SetChecked(false)
+    restedCheck:SetChecked(false)
+    cityCheck:SetChecked(false)
+    profCheck:SetChecked(false)
+    petCheck:SetChecked(false)
+
     levelEditBox:SetText("")
     profDropdown:SetValue("Alchemy")
     skillEditBox:SetText("")
     petLevelEditBox:SetText("")
     msgEditBox:SetText("")
+
+    UpdateFormStates()
+
     saveBtn:SetText("Add")
     cancelBtn:Hide()
 end
@@ -621,17 +659,22 @@ RefreshList = function()
         end
 
         local desc = ""
-        if rem.type == "level" then
-            desc = "Level |cfffff569" .. rem.value .. "|r"
-        elseif rem.type == "rested" then
-            desc = "Rested"
-        elseif rem.type == "city" then
-            desc = "In City"
-        elseif rem.type == "profession" then
-            desc = rem.profession .. " >= |cfffff569" .. rem.value .. "|r"
-        elseif rem.type == "pet_level" then
-            desc = "Pet lvl >= |cfffff569" .. rem.value .. "|r"
+        local condDescs = {}
+        local conditions = rem.conditions or { { type = rem.type, value = rem.value, profession = rem.profession } }
+        for _, cond in ipairs(conditions) do
+            if cond.type == "level" then
+                table.insert(condDescs, "Lvl >= |cfffff569" .. (cond.value or 0) .. "|r")
+            elseif cond.type == "rested" then
+                table.insert(condDescs, "Rested")
+            elseif cond.type == "city" then
+                table.insert(condDescs, "In City")
+            elseif cond.type == "profession" then
+                table.insert(condDescs, (cond.profession or "Unknown") .. " >= |cfffff569" .. (cond.value or 0) .. "|r")
+            elseif cond.type == "pet_level" then
+                table.insert(condDescs, "Pet >= |cfffff569" .. (cond.value or 0) .. "|r")
+            end
         end
+        desc = table.concat(condDescs, ", ")
         row.text:SetText(desc)
 
         -- Hooks
@@ -639,19 +682,39 @@ RefreshList = function()
             PlaySound(856)
             editingReminder = rem
             formTitle:SetText("Edit Reminder")
-            typeDropdown:SetValue(rem.type)
-            UpdateFormFields(rem.type)
 
-            if rem.type == "level" then
-                levelEditBox:SetText(tostring(rem.value))
-            elseif rem.type == "profession" then
-                profDropdown:SetValue(rem.profession)
-                skillEditBox:SetText(tostring(rem.value))
-            elseif rem.type == "pet_level" then
-                petLevelEditBox:SetText(tostring(rem.value))
+            -- Reset all checkboxes first
+            levelCheck:SetChecked(false)
+            restedCheck:SetChecked(false)
+            cityCheck:SetChecked(false)
+            profCheck:SetChecked(false)
+            petCheck:SetChecked(false)
+
+            levelEditBox:SetText("")
+            skillEditBox:SetText("")
+            petLevelEditBox:SetText("")
+            msgEditBox:SetText(rem.message or "")
+
+            local conditions = rem.conditions or { { type = rem.type, value = rem.value, profession = rem.profession } }
+            for _, cond in ipairs(conditions) do
+                if cond.type == "level" then
+                    levelCheck:SetChecked(true)
+                    levelEditBox:SetText(tostring(cond.value or ""))
+                elseif cond.type == "rested" then
+                    restedCheck:SetChecked(true)
+                elseif cond.type == "city" then
+                    cityCheck:SetChecked(true)
+                elseif cond.type == "profession" then
+                    profCheck:SetChecked(true)
+                    profDropdown:SetValue(cond.profession or "Alchemy")
+                    skillEditBox:SetText(tostring(cond.value or ""))
+                elseif cond.type == "pet_level" then
+                    petCheck:SetChecked(true)
+                    petLevelEditBox:SetText(tostring(cond.value or ""))
+                end
             end
 
-            msgEditBox:SetText(rem.message or "")
+            UpdateFormStates()
 
             saveBtn:SetText("Save")
             cancelBtn:Show()
@@ -681,53 +744,67 @@ end
 
 -- Save / Add Button Action
 saveBtn:SetScript("OnClick", function()
-    local selectedType = typeDropdown:GetValue()
-    local value = 0
-    local profession = ""
+    local conditions = {}
 
-    if selectedType == "level" then
+    if levelCheck:GetChecked() then
         local text = levelEditBox:GetText()
-        value = tonumber(text)
+        local value = tonumber(text)
         if not value or value <= 0 then
             print("|cffff3333[Reminder] Please enter a valid level!|r")
             return
         end
-    elseif selectedType == "profession" then
-        profession = profDropdown:GetValue()
+        table.insert(conditions, { type = "level", value = value })
+    end
+
+    if restedCheck:GetChecked() then
+        table.insert(conditions, { type = "rested" })
+    end
+
+    if cityCheck:GetChecked() then
+        table.insert(conditions, { type = "city" })
+    end
+
+    if profCheck:GetChecked() then
+        local profession = profDropdown:GetValue()
         local text = skillEditBox:GetText()
-        value = tonumber(text)
+        local value = tonumber(text)
         if not value or value <= 0 then
             print("|cffff3333[Reminder] Please enter a valid skill value!|r")
             return
         end
-    elseif selectedType == "pet_level" then
+        table.insert(conditions, { type = "profession", profession = profession, value = value })
+    end
+
+    if petCheck:GetChecked() then
         local text = petLevelEditBox:GetText()
-        value = tonumber(text)
+        local value = tonumber(text)
         if not value or value <= 0 then
             print("|cffff3333[Reminder] Please enter a valid pet level!|r")
             return
         end
+        table.insert(conditions, { type = "pet_level", value = value })
+    end
+
+    if #conditions == 0 then
+        print("|cffff3333[Reminder] Please select at least one condition!|r")
+        return
     end
 
     local customMsg = msgEditBox:GetText()
 
     if editingReminder then
-        editingReminder.type = selectedType
-        editingReminder.value = value
-        editingReminder.profession = profession
+        editingReminder.conditions = conditions
         editingReminder.message = (customMsg ~= "") and customMsg or nil
         editingReminder.triggered = false
     else
         local newRem = {
             id = tostring(time()) .. "_" .. tostring(random(1000, 9999)),
-            type = selectedType,
-            value = value,
-            profession = profession,
+            conditions = conditions,
             message = (customMsg ~= "") and customMsg or nil,
             enabled = true,
             triggered = false,
         }
-        tinsert(ReminderDB.reminders, newRem)
+        table.insert(ReminderDB.reminders, newRem)
     end
 
     RefreshList()
@@ -822,35 +899,56 @@ local function CheckReminders()
 
     for _, rem in ipairs(ReminderDB.reminders) do
         if rem.enabled then
-            local isMet = false
-            local msg = ""
+            local allMet = true
+            local msgs = {}
 
-            if rem.type == "level" then
-                isMet = UnitLevel("player") >= (rem.value or 0)
-                msg = "Player Level Reached: |cfffff569" .. rem.value .. "|r!"
-            elseif rem.type == "rested" then
-                isMet = IsResting()
-                msg = "You are now in a Rested place."
-            elseif rem.type == "city" then
-                isMet = IsInBigCity()
-                msg = "You entered a Big City!"
-            elseif rem.type == "profession" then
-                local rank = GetProfessionSkillRank(rem.profession)
-                isMet = (rank >= (rem.value or 0)) and IsInBigCity()
-                msg = "City Profession Skill: |cfffff569" ..
-                    rem.profession .. "|r is " .. rank .. " (Target >= " .. rem.value .. ")!"
-            elseif rem.type == "pet_level" then
-                isMet = UnitExists("pet") and (UnitLevel("pet") >= (rem.value or 0))
-                msg = "Hunter Pet Level Reached: |cfffff569" .. rem.value .. "|r!"
+            local conditions = rem.conditions
+            if not conditions then
+                conditions = {
+                    { type = rem.type, value = rem.value, profession = rem.profession }
+                }
             end
 
-            if isMet then
+            for _, cond in ipairs(conditions) do
+                local condMet = false
+                local condMsg = ""
+
+                if cond.type == "level" then
+                    condMet = UnitLevel("player") >= (cond.value or 0)
+                    condMsg = "Lvl >= " .. (cond.value or 0)
+                elseif cond.type == "rested" then
+                    condMet = IsResting()
+                    condMsg = "Rested"
+                elseif cond.type == "city" then
+                    condMet = IsInBigCity()
+                    condMsg = "In City"
+                elseif cond.type == "profession" then
+                    local rank = GetProfessionSkillRank(cond.profession)
+                    condMet = (rank >= (cond.value or 0)) and IsInBigCity()
+                    condMsg = (cond.profession or "Profession") .. " >= " .. (cond.value or 0) .. " (in City)"
+                elseif cond.type == "pet_level" then
+                    condMet = UnitExists("pet") and (UnitLevel("pet") >= (cond.value or 0))
+                    condMsg = "Pet Lvl >= " .. (cond.value or 0)
+                else
+                    condMet = true
+                end
+
+                if not condMet then
+                    allMet = false
+                end
+                if condMsg ~= "" then
+                    table.insert(msgs, condMsg)
+                end
+            end
+
+            if allMet and #conditions > 0 then
                 if not rem.triggered then
                     rem.triggered = true
+                    local alertMsg = "Reminder Met: " .. table.concat(msgs, ", ")
                     if rem.message and rem.message ~= "" then
-                        msg = msg .. "\n\n|cff82c5ff" .. rem.message .. "|r"
+                        alertMsg = alertMsg .. "\n\n|cff82c5ff" .. rem.message .. "|r"
                     end
-                    TriggerAlert(msg, rem.id)
+                    TriggerAlert(alertMsg, rem.id)
                 end
             else
                 rem.triggered = false
@@ -881,6 +979,23 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1, ...)
         ReminderDB.reminders = ReminderDB.reminders or {}
         if ReminderDB.minimapPos == nil then ReminderDB.minimapPos = 45 end
         if ReminderDB.minimapHide == nil then ReminderDB.minimapHide = false end
+
+        -- Database Migration to Multi-condition structure
+        for _, rem in ipairs(ReminderDB.reminders) do
+            if not rem.conditions then
+                rem.conditions = {}
+                if rem.type then
+                    table.insert(rem.conditions, {
+                        type = rem.type,
+                        value = rem.value,
+                        profession = rem.profession
+                    })
+                end
+                rem.type = nil
+                rem.value = nil
+                rem.profession = nil
+            end
+        end
 
         -- Register slash commands
         SLASH_REMINDER1 = "/reminder"
