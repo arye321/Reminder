@@ -7,6 +7,11 @@ local deg, atan2 = math.deg, math.atan2
 local random, time = math.random, time
 local tinsert, ipairs, pairs = table.insert, ipairs, pairs
 
+local function trim(s)
+    if not s then return "" end
+    return s:match("^%s*(.-)%s*$")
+end
+
 -- -------------------------------------------------------------
 -- Data Structures & Capital Cities
 -- -------------------------------------------------------------
@@ -380,7 +385,7 @@ end
 -- Main Settings Window Creation
 -- -------------------------------------------------------------
 local frame = CreateFrame("Frame", "ReminderFrame", UIParent, "BackdropTemplate")
-frame:SetSize(550, 360)
+frame:SetSize(550, 470)
 frame:SetPoint("CENTER", 0, 0)
 frame:SetFrameStrata("HIGH")
 frame:SetMovable(true)
@@ -486,12 +491,29 @@ petCheck:SetPoint("TOPLEFT", 12, -177)
 local petLevelEditBox = CreateEditBox(rightPanel, 80, 20, true)
 petLevelEditBox:SetPoint("TOPLEFT", 130, -177)
 
+local areaCheck = CreateCheckButton(rightPanel, 20, 20, "Area / Sub-area")
+areaCheck:SetPoint("TOPLEFT", 12, -202)
+
+local areaLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+areaLabel:SetPoint("TOPLEFT", 32, -224)
+areaLabel:SetText("Area:")
+
+local areaEditBox = CreateEditBox(rightPanel, 150, 20, false)
+areaEditBox:SetPoint("TOPLEFT", 75, -222)
+
+local subAreaLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+subAreaLabel:SetPoint("TOPLEFT", 32, -249)
+subAreaLabel:SetText("Sub:")
+
+local subAreaEditBox = CreateEditBox(rightPanel, 150, 20, false)
+subAreaEditBox:SetPoint("TOPLEFT", 75, -247)
+
 -- Custom message fields (always visible)
 local msgLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-msgLabel:SetPoint("TOPLEFT", 12, -205)
+msgLabel:SetPoint("TOPLEFT", 12, -295)
 msgLabel:SetText("Custom Message (Optional):")
 local msgEditBox = CreateEditBox(rightPanel, 200, 20, false)
-msgEditBox:SetPoint("TOPLEFT", 12, -220)
+msgEditBox:SetPoint("TOPLEFT", 12, -310)
 
 local saveBtn = CreateFrame("Button", nil, rightPanel, "UIPanelButtonTemplate")
 saveBtn:SetSize(90, 24)
@@ -511,6 +533,8 @@ local function UpdateFormStates()
     SetControlEnabled(profDropdown, profCheck:GetChecked())
     SetControlEnabled(skillEditBox, profCheck:GetChecked())
     SetControlEnabled(petLevelEditBox, petCheck:GetChecked())
+    SetControlEnabled(areaEditBox, areaCheck:GetChecked())
+    SetControlEnabled(subAreaEditBox, areaCheck:GetChecked())
 end
 
 levelCheck:SetScript("OnClick", function(self)
@@ -539,6 +563,12 @@ petCheck:SetScript("OnClick", function(self)
     PlaySound(856)
 end)
 
+areaCheck:SetScript("OnClick", function(self)
+    UpdateFormStates()
+    if self:GetChecked() then areaEditBox:SetFocus() end
+    PlaySound(856)
+end)
+
 local function ClearForm()
     editingReminder = nil
     formTitle:SetText("Add Reminder")
@@ -548,11 +578,14 @@ local function ClearForm()
     cityCheck:SetChecked(false)
     profCheck:SetChecked(false)
     petCheck:SetChecked(false)
+    areaCheck:SetChecked(false)
 
     levelEditBox:SetText("")
     profDropdown:SetValue("Alchemy")
     skillEditBox:SetText("")
     petLevelEditBox:SetText("")
+    areaEditBox:SetText("")
+    subAreaEditBox:SetText("")
     msgEditBox:SetText("")
 
     UpdateFormStates()
@@ -672,6 +705,12 @@ RefreshList = function()
                 table.insert(condDescs, (cond.profession or "Unknown") .. " >= |cfffff569" .. (cond.value or 0) .. "|r")
             elseif cond.type == "pet_level" then
                 table.insert(condDescs, "Pet >= |cfffff569" .. (cond.value or 0) .. "|r")
+            elseif cond.type == "area" then
+                if cond.subArea and trim(cond.subArea) ~= "" then
+                    table.insert(condDescs, "|cfffff569" .. cond.area .. "|r (|cfffff569" .. cond.subArea .. "|r)")
+                else
+                    table.insert(condDescs, "|cfffff569" .. cond.area .. "|r")
+                end
             end
         end
         desc = table.concat(condDescs, ", ")
@@ -689,10 +728,13 @@ RefreshList = function()
             cityCheck:SetChecked(false)
             profCheck:SetChecked(false)
             petCheck:SetChecked(false)
+            areaCheck:SetChecked(false)
 
             levelEditBox:SetText("")
             skillEditBox:SetText("")
             petLevelEditBox:SetText("")
+            areaEditBox:SetText("")
+            subAreaEditBox:SetText("")
             msgEditBox:SetText(rem.message or "")
 
             local conditions = rem.conditions or { { type = rem.type, value = rem.value, profession = rem.profession } }
@@ -711,6 +753,10 @@ RefreshList = function()
                 elseif cond.type == "pet_level" then
                     petCheck:SetChecked(true)
                     petLevelEditBox:SetText(tostring(cond.value or ""))
+                elseif cond.type == "area" then
+                    areaCheck:SetChecked(true)
+                    areaEditBox:SetText(cond.area or "")
+                    subAreaEditBox:SetText(cond.subArea or "")
                 end
             end
 
@@ -783,6 +829,20 @@ saveBtn:SetScript("OnClick", function()
             return
         end
         table.insert(conditions, { type = "pet_level", value = value })
+    end
+
+    if areaCheck:GetChecked() then
+        local areaText = areaEditBox:GetText()
+        local subAreaText = subAreaEditBox:GetText()
+        if not areaText or trim(areaText) == "" then
+            print("|cffff3333[Reminder] Please enter a valid Area!|r")
+            return
+        end
+        table.insert(conditions, {
+            type = "area",
+            area = trim(areaText),
+            subArea = (subAreaText and trim(subAreaText) ~= "") and trim(subAreaText) or nil
+        })
     end
 
     if #conditions == 0 then
@@ -929,6 +989,29 @@ local function CheckReminders()
                 elseif cond.type == "pet_level" then
                     condMet = UnitExists("pet") and (UnitLevel("pet") >= (cond.value or 0))
                     condMsg = "Pet Lvl >= " .. (cond.value or 0)
+                elseif cond.type == "area" then
+                    local currentArea = GetRealZoneText() or ""
+                    local currentSubArea = GetMinimapZoneText() or ""
+                    
+                    local targetArea = cond.area and trim(cond.area):lower() or ""
+                    local targetSubArea = cond.subArea and trim(cond.subArea):lower() or ""
+                    
+                    if targetArea ~= "" then
+                        local areaMatch = (currentArea:lower() == targetArea)
+                        local subAreaMatch = true
+                        if targetSubArea ~= "" then
+                            subAreaMatch = (currentSubArea:lower() == targetSubArea)
+                        end
+                        condMet = areaMatch and subAreaMatch
+                    else
+                        condMet = false
+                    end
+                    
+                    if cond.subArea and trim(cond.subArea) ~= "" then
+                        condMsg = cond.area .. " (" .. cond.subArea .. ")"
+                    else
+                        condMsg = cond.area
+                    end
                 else
                     condMet = true
                 end
