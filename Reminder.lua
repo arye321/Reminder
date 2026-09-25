@@ -2,8 +2,6 @@
 -- WoW Classic Era Addon
 -- Author: Antigravity
 
-local cos, sin, rad = math.cos, math.sin, math.rad
-local deg, atan2 = math.deg, math.atan2
 local random, time = math.random, time
 local tinsert, ipairs, pairs = table.insert, ipairs, pairs
 
@@ -441,12 +439,12 @@ subtitle:SetText("Conditions:")
 local function CreateCheckButton(parent, width, height, labelText)
     local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
     check:SetSize(width, height)
-    
+
     local text = check:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     text:SetPoint("LEFT", check, "RIGHT", 6, 0)
     text:SetText(labelText)
     check.text = text
-    
+
     return check
 end
 
@@ -572,7 +570,7 @@ end)
 local function ClearForm()
     editingReminder = nil
     formTitle:SetText("Add Reminder")
-    
+
     levelCheck:SetChecked(false)
     restedCheck:SetChecked(false)
     cityCheck:SetChecked(false)
@@ -882,8 +880,8 @@ end)
 -- -------------------------------------------------------------
 local MinimapButton = CreateFrame("Button", "ReminderMinimapButton", Minimap)
 MinimapButton:SetSize(31, 31)
-MinimapButton:SetFrameLevel(Minimap:GetFrameLevel() + 5)
-MinimapButton:SetToplevel(true)
+MinimapButton:SetFrameStrata("MEDIUM")
+MinimapButton:SetFrameLevel((Minimap:GetFrameLevel() or 5) + 8)
 MinimapButton:RegisterForClicks("LeftButtonUp")
 MinimapButton:RegisterForDrag("LeftButton")
 
@@ -898,12 +896,30 @@ border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
 border:SetSize(53, 53)
 border:SetPoint("TOPLEFT", 0, 0)
 
+local highlight = MinimapButton:CreateTexture(nil, "HIGHLIGHT")
+highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+highlight:SetPoint("CENTER", 0, 0)
+highlight:SetSize(24, 24)
+
+local math_atan2 = math.atan2 or math.atan
+
 local function UpdateMinimapPosition()
     if not ReminderDB then return end
-    local angle = ReminderDB.minimapPos or 45
+    local deg = ReminderDB.minimapPos or 220
+    local rad = math.rad(deg)
+
     local radius = 80
-    local x = radius * cos(rad(angle))
-    local y = radius * sin(rad(angle))
+    if Minimap and Minimap.GetWidth then
+        local w = Minimap:GetWidth()
+        if w and w > 0 then
+            radius = (w / 2) + 10
+        end
+    end
+
+    local x = math.cos(rad) * radius
+    local y = math.sin(rad) * radius
+
+    MinimapButton:ClearAllPoints()
     MinimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
 
     if ReminderDB.minimapHide then
@@ -915,12 +931,18 @@ end
 
 MinimapButton:SetScript("OnDragStart", function(self)
     self:SetScript("OnUpdate", function(s)
-        local cx, cy = GetCursorPosition()
-        local scale = Minimap:GetEffectiveScale()
         local mx, my = Minimap:GetCenter()
-        local angle = deg(atan2((cy / scale) - my, (cx / scale) - mx))
-        ReminderDB.minimapPos = angle
-        UpdateMinimapPosition()
+        local px, py = GetCursorPosition()
+        local scale = Minimap:GetEffectiveScale()
+        if mx and my and scale and scale > 0 then
+            px, py = px / scale, py / scale
+            local dx = px - mx
+            local dy = py - my
+            local angle = math.deg(math_atan2(dy, dx))
+            if angle < 0 then angle = angle + 360 end
+            ReminderDB.minimapPos = angle
+            UpdateMinimapPosition()
+        end
     end)
 end)
 
@@ -992,10 +1014,10 @@ local function CheckReminders()
                 elseif cond.type == "area" then
                     local currentArea = GetRealZoneText() or ""
                     local currentSubArea = GetMinimapZoneText() or ""
-                    
+
                     local targetArea = cond.area and trim(cond.area):lower() or ""
                     local targetSubArea = cond.subArea and trim(cond.subArea):lower() or ""
-                    
+
                     if targetArea ~= "" then
                         local areaMatch = (currentArea:lower() == targetArea)
                         local subAreaMatch = true
@@ -1006,7 +1028,7 @@ local function CheckReminders()
                     else
                         condMet = false
                     end
-                    
+
                     if cond.subArea and trim(cond.subArea) ~= "" then
                         condMsg = cond.area .. " (" .. cond.subArea .. ")"
                     else
@@ -1060,8 +1082,10 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1, ...)
         -- Load Database Variables
         ReminderDB = ReminderDB or {}
         ReminderDB.reminders = ReminderDB.reminders or {}
-        if ReminderDB.minimapPos == nil then ReminderDB.minimapPos = 45 end
+        if ReminderDB.minimapPos == nil then ReminderDB.minimapPos = 220 end
         if ReminderDB.minimapHide == nil then ReminderDB.minimapHide = false end
+        ReminderDB.minimapX = nil
+        ReminderDB.minimapY = nil
 
         -- Database Migration to Multi-condition structure
         for _, rem in ipairs(ReminderDB.reminders) do

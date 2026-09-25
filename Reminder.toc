@@ -1,4 +1,4 @@
-## Interface: 11508
+## Interface: 16001
 ## Title: Reminder
 ## Notes: Reminds you with a simple popup when specific conditions are met.
 ## Author: Antigravity
