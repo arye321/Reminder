@@ -300,7 +300,7 @@ local function ShowNextAlert()
         ApplyBackdrop(alertFrame, 0.08, 0.08, 0.08, 0.95, 0.85, 0.7, 0.2, 1) -- Gold border
 
         local icon = alertFrame:CreateTexture(nil, "OVERLAY")
-        icon:SetTexture("Interface\\Icons\\INV_Misc_PocketWatch_01")
+        icon:SetTexture("Interface\\Icons\\inv_misc_clock_01")
         icon:SetSize(24, 24)
         icon:SetPoint("TOP", 0, -12)
         alertFrame.icon = icon
@@ -876,102 +876,34 @@ cancelBtn:SetScript("OnClick", function()
 end)
 
 -- -------------------------------------------------------------
--- Minimap Button Creation
+-- LibDataBroker & Minimap Icon Creation
 -- -------------------------------------------------------------
-local MinimapButton = CreateFrame("Button", "ReminderMinimapButton", Minimap)
-MinimapButton:SetSize(31, 31)
-MinimapButton:SetFrameStrata("MEDIUM")
-MinimapButton:SetFrameLevel((Minimap:GetFrameLevel() or 5) + 8)
-MinimapButton:RegisterForClicks("LeftButtonUp")
-MinimapButton:RegisterForDrag("LeftButton")
+local LDB = LibStub and LibStub:GetLibrary("LibDataBroker-1.1", true)
+local LDBIcon = LibStub and LibStub:GetLibrary("LibDBIcon-1.0", true)
 
-local icon = MinimapButton:CreateTexture(nil, "BACKGROUND")
-icon:SetTexture("Interface\\Icons\\INV_Misc_PocketWatch_01")
-icon:SetSize(20, 20)
-icon:SetPoint("CENTER", 0, 0)
-MinimapButton.icon = icon
-
-local border = MinimapButton:CreateTexture(nil, "OVERLAY")
-border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-border:SetSize(53, 53)
-border:SetPoint("TOPLEFT", 0, 0)
-
-local highlight = MinimapButton:CreateTexture(nil, "HIGHLIGHT")
-highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-highlight:SetPoint("CENTER", 0, 0)
-highlight:SetSize(24, 24)
-
-local math_atan2 = math.atan2 or math.atan
-
-local function UpdateMinimapPosition()
-    if not ReminderDB then return end
-    local deg = ReminderDB.minimapPos or 220
-    local rad = math.rad(deg)
-
-    local radius = 80
-    if Minimap and Minimap.GetWidth then
-        local w = Minimap:GetWidth()
-        if w and w > 0 then
-            radius = (w / 2) + 10
-        end
-    end
-
-    local x = math.cos(rad) * radius
-    local y = math.sin(rad) * radius
-
-    MinimapButton:ClearAllPoints()
-    MinimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
-
-    if ReminderDB.minimapHide then
-        MinimapButton:Hide()
-    else
-        MinimapButton:Show()
-    end
+local reminderLDB = nil
+if LDB then
+    reminderLDB = LDB:NewDataObject("Reminder", {
+        type = "launcher",
+        text = "Reminder",
+        icon = "Interface\\Icons\\inv_misc_clock_01",
+        OnClick = function(self, button)
+            if button == "LeftButton" then
+                if ReminderFrame:IsShown() then
+                    ReminderFrame:Hide()
+                else
+                    ReminderFrame:Show()
+                end
+                PlaySound(856)
+            end
+        end,
+        OnTooltipShow = function(tt)
+            tt:AddLine("Reminder", 1, 1, 1)
+            tt:AddLine("Left-Click: Open settings.", 0.2, 1, 0.2)
+            tt:AddLine("Drag: Move minimap button.", 0.8, 0.8, 0.8)
+        end,
+    })
 end
-
-MinimapButton:SetScript("OnDragStart", function(self)
-    self:SetScript("OnUpdate", function(s)
-        local mx, my = Minimap:GetCenter()
-        local px, py = GetCursorPosition()
-        local scale = Minimap:GetEffectiveScale()
-        if mx and my and scale and scale > 0 then
-            px, py = px / scale, py / scale
-            local dx = px - mx
-            local dy = py - my
-            local angle = math.deg(math_atan2(dy, dx))
-            if angle < 0 then angle = angle + 360 end
-            ReminderDB.minimapPos = angle
-            UpdateMinimapPosition()
-        end
-    end)
-end)
-
-MinimapButton:SetScript("OnDragStop", function(self)
-    self:SetScript("OnUpdate", nil)
-end)
-
-MinimapButton:SetScript("OnClick", function(self, button)
-    if button == "LeftButton" then
-        if ReminderFrame:IsShown() then
-            ReminderFrame:Hide()
-        else
-            ReminderFrame:Show()
-        end
-        PlaySound(856)
-    end
-end)
-
-MinimapButton:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:SetText("Reminder", 1, 1, 1)
-    GameTooltip:AddLine("Left-Click: Open settings.", 0.2, 1, 0.2)
-    GameTooltip:AddLine("Drag: Move minimap button.", 0.8, 0.8, 0.8)
-    GameTooltip:Show()
-end)
-
-MinimapButton:SetScript("OnLeave", function()
-    GameTooltip:Hide()
-end)
 
 -- -------------------------------------------------------------
 -- Condition Evaluation & Triggers
@@ -1082,10 +1014,18 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1, ...)
         -- Load Database Variables
         ReminderDB = ReminderDB or {}
         ReminderDB.reminders = ReminderDB.reminders or {}
-        if ReminderDB.minimapPos == nil then ReminderDB.minimapPos = 220 end
-        if ReminderDB.minimapHide == nil then ReminderDB.minimapHide = false end
-        ReminderDB.minimapX = nil
-        ReminderDB.minimapY = nil
+        ReminderDB.minimap = ReminderDB.minimap or {}
+        if ReminderDB.minimap.minimapPos == nil then
+            ReminderDB.minimap.minimapPos = ReminderDB.minimapPos or 220
+        end
+        if ReminderDB.minimap.hide == nil then
+            ReminderDB.minimap.hide = ReminderDB.minimapHide or false
+        end
+
+        -- Register with LibDBIcon
+        if LDBIcon and reminderLDB then
+            LDBIcon:Register("Reminder", reminderLDB, ReminderDB.minimap)
+        end
 
         -- Database Migration to Multi-condition structure
         for _, rem in ipairs(ReminderDB.reminders) do
@@ -1114,9 +1054,6 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1, ...)
             end
             PlaySound(856)
         end
-
-        -- Init Position
-        UpdateMinimapPosition()
 
         -- Prepare initial view
         ClearForm()
