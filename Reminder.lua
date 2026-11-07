@@ -54,18 +54,93 @@ local typeList = {
 -- -------------------------------------------------------------
 -- Helper Functions
 -- -------------------------------------------------------------
+local theme = {
+    border = { 0.23, 0.26, 0.31 },
+    gold = { 0.90, 0.73, 0.43 },
+    text = { 0.91, 0.92, 0.94 },
+    muted = { 0.59, 0.64, 0.71 },
+    green = { 0.48, 0.78, 0.64 },
+}
+
 local function ApplyBackdrop(frame, bgR, bgG, bgB, bgA, borderR, borderG, borderB, borderA)
     local bg = {
-        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile = true,
-        tileSize = 16,
-        edgeSize = 12,
-        insets = { left = 3, right = 3, top = 3, bottom = 3 }
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1,
+        insets = { left = 1, right = 1, top = 1, bottom = 1 }
     }
     frame:SetBackdrop(bg)
     frame:SetBackdropColor(bgR, bgG, bgB, bgA)
     frame:SetBackdropBorderColor(borderR, borderG, borderB, borderA)
+end
+
+local function Label(parent, text, font, color)
+    local label = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
+    label:SetText(text)
+    label:SetTextColor(unpack(color or theme.text))
+    label:SetJustifyH("LEFT")
+    return label
+end
+
+local function Fill(parent, color, alpha)
+    local texture = parent:CreateTexture(nil, "BACKGROUND")
+    texture:SetColorTexture(color[1], color[2], color[3], alpha or 1)
+    return texture
+end
+
+local function CreateButton(parent, width, height, text, style)
+    local button = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    button:SetSize(width, height)
+    local primary = style == "primary"
+    local danger = style == "danger"
+    local normal = primary and { 0.28, 0.22, 0.13 } or { 0.12, 0.14, 0.18 }
+    local edge = primary and theme.gold or theme.border
+    ApplyBackdrop(button, normal[1], normal[2], normal[3], 1, edge[1], edge[2], edge[3], 1)
+    button:SetNormalFontObject("GameFontHighlightSmall")
+    button:SetHighlightFontObject("GameFontHighlightSmall")
+    button:SetDisabledFontObject("GameFontDisableSmall")
+    button:SetText(text)
+    button:GetFontString():SetTextColor(unpack(primary and theme.gold or (danger and { 0.91, 0.56, 0.54 } or theme.text)))
+    button:SetScript("OnEnter", function(self)
+        self:SetBackdropColor(normal[1] + 0.06, normal[2] + 0.06, normal[3] + 0.06, 1)
+        self:SetBackdropBorderColor(unpack(danger and { 0.85, 0.4, 0.38 } or theme.gold))
+    end)
+    button:SetScript("OnLeave", function(self)
+        self:SetBackdropColor(normal[1], normal[2], normal[3], 1)
+        self:SetBackdropBorderColor(unpack(edge))
+    end)
+    return button
+end
+
+local function CreateCheckButton(parent, width, height, labelText)
+    local check = CreateFrame("CheckButton", nil, parent, "BackdropTemplate")
+    check:SetSize(width, height)
+    ApplyBackdrop(check, 0.045, 0.055, 0.075, 1, 0.30, 0.34, 0.40, 1)
+    local tick = check:CreateTexture(nil, "ARTWORK")
+    tick:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+    tick:SetAllPoints()
+    tick:SetVertexColor(unpack(theme.gold))
+    check:SetCheckedTexture(tick)
+    local highlight = check:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetColorTexture(1, 0.82, 0.5, 0.12)
+    highlight:SetAllPoints()
+    if labelText then
+        check.text = Label(check, labelText)
+        check.text:SetPoint("LEFT", check, "RIGHT", 10, 0)
+        -- Let clicking the label toggle the checkbox as well.
+        check:SetHitRectInsets(0, -check.text:GetStringWidth() - 10, -3, -3)
+    end
+    return check
+end
+
+local function AddTooltip(control, title, description)
+    control:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(title, unpack(theme.gold))
+        GameTooltip:AddLine(description, 0.85, 0.88, 0.92, true)
+        GameTooltip:Show()
+    end)
+    control:HookScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
 local function IsInBigCity()
@@ -163,10 +238,12 @@ end
 local function CreateEditBox(parent, width, height, numeric)
     local eb = CreateFrame("EditBox", nil, parent, "BackdropTemplate")
     eb:SetSize(width, height)
-    eb:SetFontObject("ChatFontNormal")
+    eb:SetFontObject("GameFontHighlightSmall")
     eb:SetAutoFocus(false)
-    eb:SetTextInsets(6, 6, 0, 0)
-    ApplyBackdrop(eb, 0, 0, 0, 0.6, 0.4, 0.4, 0.4, 1)
+    eb:SetTextInsets(9, 9, 0, 0)
+    ApplyBackdrop(eb, 0.045, 0.055, 0.075, 1, 0.23, 0.26, 0.31, 1)
+    eb:SetScript("OnEditFocusGained", function(self) self:SetBackdropBorderColor(unpack(theme.gold)) end)
+    eb:SetScript("OnEditFocusLost", function(self) self:SetBackdropBorderColor(unpack(theme.border)) end)
 
     eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     eb:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
@@ -181,12 +258,15 @@ local activeDropdownMenu = nil
 local function CreateDropdown(parent, width, height, options, callback)
     local dropdown = CreateFrame("Button", nil, parent, "BackdropTemplate")
     dropdown:SetSize(width, height)
-    ApplyBackdrop(dropdown, 0.1, 0.1, 0.1, 0.8, 0.4, 0.4, 0.4, 1)
+    ApplyBackdrop(dropdown, 0.045, 0.055, 0.075, 1, 0.23, 0.26, 0.31, 1)
+    dropdown:SetScript("OnEnter", function(self) self:SetBackdropBorderColor(unpack(theme.gold)) end)
+    dropdown:SetScript("OnLeave", function(self) self:SetBackdropBorderColor(unpack(theme.border)) end)
 
     local text = dropdown:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     text:SetPoint("LEFT", 8, 0)
     text:SetPoint("RIGHT", -24, 0)
     text:SetJustifyH("LEFT")
+    text:SetTextColor(unpack(theme.text))
     dropdown.text = text
 
     local arrow = dropdown:CreateTexture(nil, "OVERLAY")
@@ -196,7 +276,7 @@ local function CreateDropdown(parent, width, height, options, callback)
     dropdown.arrow = arrow
 
     local menu = CreateFrame("Frame", nil, dropdown, "BackdropTemplate")
-    ApplyBackdrop(menu, 0.05, 0.05, 0.05, 0.95, 0.4, 0.4, 0.4, 1)
+    ApplyBackdrop(menu, 0.08, 0.095, 0.12, 1, 0.40, 0.34, 0.23, 1)
     menu:SetFrameStrata("DIALOG")
     menu:Hide()
     dropdown.menu = menu
@@ -214,13 +294,12 @@ local function CreateDropdown(parent, width, height, options, callback)
             local btn = buttons[i]
             if not btn then
                 btn = CreateFrame("Button", nil, menu)
-                btn:SetHeight(18)
+                btn:SetHeight(24)
                 btn:SetNormalFontObject("GameFontHighlightSmall")
                 btn:SetHighlightFontObject("GameFontNormalSmall")
 
                 local btnHighlight = btn:CreateTexture(nil, "BACKGROUND")
-                btnHighlight:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
-                btnHighlight:SetBlendMode("ADD")
+                btnHighlight:SetColorTexture(0.90, 0.73, 0.43, 0.15)
                 btnHighlight:SetAllPoints()
                 btn:SetHighlightTexture(btnHighlight)
 
@@ -228,6 +307,7 @@ local function CreateDropdown(parent, width, height, options, callback)
                 btnText:SetPoint("LEFT", 6, 0)
                 btnText:SetPoint("RIGHT", -6, 0)
                 btnText:SetJustifyH("LEFT")
+                btnText:SetTextColor(unpack(theme.text))
                 btn.text = btnText
 
                 buttons[i] = btn
@@ -235,7 +315,7 @@ local function CreateDropdown(parent, width, height, options, callback)
 
             btn.text:SetText(opt.label or opt.value)
             btn:SetWidth(width - 8)
-            btn:SetPoint("TOPLEFT", menu, "TOPLEFT", 4, -4 - (i - 1) * 18)
+            btn:SetPoint("TOPLEFT", menu, "TOPLEFT", 4, -4 - (i - 1) * 24)
             btn:SetScript("OnClick", function()
                 dropdown.selectedValue = opt.value
                 dropdown.text:SetText(opt.label or opt.value)
@@ -244,7 +324,7 @@ local function CreateDropdown(parent, width, height, options, callback)
                 if callback then callback(opt.value) end
             end)
             btn:Show()
-            menuHeight = menuHeight + 18
+            menuHeight = menuHeight + 24
         end
         menu:SetSize(width, menuHeight)
     end
@@ -317,49 +397,52 @@ local function ShowNextAlert()
 
     if not alertFrame then
         alertFrame = CreateFrame("Frame", "ReminderAlertFrame", UIParent, "BackdropTemplate")
-        alertFrame:SetSize(320, 160)
+        alertFrame:SetSize(420, 210)
         alertFrame:SetPoint("CENTER", 0, 150)
         alertFrame:SetFrameStrata("DIALOG")
         alertFrame:EnableMouse(true)
         alertFrame:SetMovable(true)
+        alertFrame:SetClampedToScreen(true)
         alertFrame:RegisterForDrag("LeftButton")
         alertFrame:SetScript("OnDragStart", alertFrame.StartMoving)
         alertFrame:SetScript("OnDragStop", alertFrame.StopMovingOrSizing)
 
-        ApplyBackdrop(alertFrame, 0.08, 0.08, 0.08, 0.95, 0.85, 0.7, 0.2, 1) -- Gold border
+        ApplyBackdrop(alertFrame, 0.055, 0.065, 0.085, 0.98, 0.56, 0.45, 0.27, 1)
+        local accent = Fill(alertFrame, theme.gold)
+        accent:SetPoint("TOPLEFT", 1, -1)
+        accent:SetPoint("TOPRIGHT", -1, -1)
+        accent:SetHeight(3)
 
         local icon = alertFrame:CreateTexture(nil, "OVERLAY")
         icon:SetTexture("Interface\\Icons\\inv_misc_clock_01")
-        icon:SetSize(24, 24)
-        icon:SetPoint("TOP", 0, -12)
+        icon:SetSize(34, 34)
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        icon:SetPoint("TOPLEFT", 22, -22)
         alertFrame.icon = icon
 
-        local title = alertFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        title:SetPoint("TOP", icon, "BOTTOM", 0, -6)
-        title:SetText("Reminder Alert!")
-        title:SetTextColor(0.85, 0.7, 0.2)
+        local title = Label(alertFrame, "Reminder", "GameFontNormalLarge", theme.gold)
+        title:SetPoint("TOPLEFT", icon, "TOPRIGHT", 12, -1)
         alertFrame.title = title
+        local hint = Label(alertFrame, "Your conditions have been met.", nil, theme.muted)
+        hint:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
 
         local message = alertFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        message:SetPoint("TOPLEFT", 15, -55)
-        message:SetPoint("BOTTOMRIGHT", -15, 45)
-        message:SetJustifyH("CENTER")
+        message:SetPoint("TOPLEFT", 22, -78)
+        message:SetWidth(376)
+        message:SetTextColor(unpack(theme.text))
+        message:SetJustifyH("LEFT")
         message:SetJustifyV("TOP")
         message:SetWordWrap(true)
         alertFrame.message = message
 
-        local okBtn = CreateFrame("Button", nil, alertFrame, "UIPanelButtonTemplate")
-        okBtn:SetSize(90, 22)
-        okBtn:SetText("OK")
+        local okBtn = CreateButton(alertFrame, 112, 30, "Dismiss")
         okBtn:SetScript("OnClick", function()
             PlaySound(856)
             ShowNextAlert()
         end)
         alertFrame.okBtn = okBtn
 
-        local removeBtn = CreateFrame("Button", nil, alertFrame, "UIPanelButtonTemplate")
-        removeBtn:SetSize(110, 22)
-        removeBtn:SetText("Done, remove")
+        local removeBtn = CreateButton(alertFrame, 150, 30, "Complete & remove", "primary")
         removeBtn:SetScript("OnClick", function()
             PlaySound(856)
             local currentReminderId = alertFrame.currentReminderId
@@ -370,7 +453,7 @@ local function ShowNextAlert()
                         break
                     end
                 end
-                print("|cfffff569[Reminder]|r Removed reminder: " .. msg)
+                print("|cfffff569[Reminder]|r Removed reminder: " .. alertFrame.message:GetText())
                 RefreshList()
             end
             ShowNextAlert()
@@ -382,17 +465,18 @@ local function ShowNextAlert()
 
     if reminderId then
         alertFrame.okBtn:ClearAllPoints()
-        alertFrame.okBtn:SetPoint("BOTTOMLEFT", alertFrame, "BOTTOMLEFT", 40, 12)
+        alertFrame.okBtn:SetPoint("BOTTOMLEFT", alertFrame, "BOTTOMLEFT", 22, 20)
         alertFrame.removeBtn:ClearAllPoints()
-        alertFrame.removeBtn:SetPoint("BOTTOMRIGHT", alertFrame, "BOTTOMRIGHT", -40, 12)
+        alertFrame.removeBtn:SetPoint("BOTTOMRIGHT", alertFrame, "BOTTOMRIGHT", -22, 20)
         alertFrame.removeBtn:Show()
     else
         alertFrame.okBtn:ClearAllPoints()
-        alertFrame.okBtn:SetPoint("BOTTOM", alertFrame, "BOTTOM", 0, 12)
+        alertFrame.okBtn:SetPoint("BOTTOMRIGHT", alertFrame, "BOTTOMRIGHT", -22, 20)
         alertFrame.removeBtn:Hide()
     end
 
     alertFrame.message:SetText(msg)
+    alertFrame:SetHeight(math.max(190, 78 + alertFrame.message:GetStringHeight() + 76))
     alertFrame:Show()
     PlaySound(18019) -- Raid warning sound
 end
@@ -412,70 +496,90 @@ end
 -- Main Settings Window Creation
 -- -------------------------------------------------------------
 local frame = CreateFrame("Frame", "ReminderFrame", UIParent, "BackdropTemplate")
-frame:SetSize(550, 470)
+frame:SetSize(820, 620)
 frame:SetPoint("CENTER", 0, 0)
 frame:SetFrameStrata("HIGH")
 frame:SetMovable(true)
+frame:SetClampedToScreen(true)
 frame:EnableMouse(true)
 frame:RegisterForDrag("LeftButton")
 frame:SetScript("OnDragStart", frame.StartMoving)
 frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-ApplyBackdrop(frame, 0.05, 0.05, 0.05, 0.95, 0.3, 0.3, 0.3, 1)
+ApplyBackdrop(frame, 0.055, 0.065, 0.085, 0.98, 0.30, 0.32, 0.37, 1)
 frame:Hide()
 
--- Close button
-local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-closeBtn:SetPoint("TOPRIGHT", -5, -5)
+local topAccent = Fill(frame, theme.gold)
+topAccent:SetPoint("TOPLEFT", 1, -1)
+topAccent:SetPoint("TOPRIGHT", -1, -1)
+topAccent:SetHeight(2)
+
+local closeBtn = CreateButton(frame, 28, 26, "x")
+closeBtn:SetPoint("TOPRIGHT", -18, -20)
+closeBtn:SetScript("OnClick", function() frame:Hide(); PlaySound(856) end)
+AddTooltip(closeBtn, "Close", "You can also press Escape to close this window.")
 
 -- Add to special frames to close on ESC
 tinsert(UISpecialFrames, "ReminderFrame")
 
 -- Title Text
-local titleText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-titleText:SetPoint("TOPLEFT", 15, -15)
-titleText:SetText("Reminder Settings")
+local headerIcon = frame:CreateTexture(nil, "ARTWORK")
+headerIcon:SetTexture("Interface\\Icons\\inv_misc_clock_01")
+headerIcon:SetSize(38, 38)
+headerIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+headerIcon:SetPoint("TOPLEFT", 22, -23)
+local titleText = Label(frame, "Reminder", "GameFontNormalHuge", theme.gold)
+titleText:SetPoint("TOPLEFT", headerIcon, "TOPRIGHT", 12, 1)
+local tagline = Label(frame, "A little nudge, at the right moment.", nil, theme.muted)
+tagline:SetPoint("TOPLEFT", titleText, "BOTTOMLEFT", 0, -6)
 
 -- Panels
 local leftPanel = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-leftPanel:SetPoint("TOPLEFT", 15, -45)
-leftPanel:SetPoint("BOTTOMLEFT", 15, 15)
-leftPanel:SetWidth(270)
-ApplyBackdrop(leftPanel, 0.02, 0.02, 0.02, 0.6, 0.2, 0.2, 0.2, 0.8)
+leftPanel:SetPoint("TOPLEFT", 18, -86)
+leftPanel:SetPoint("BOTTOMLEFT", 18, 48)
+leftPanel:SetWidth(410)
+ApplyBackdrop(leftPanel, 0.08, 0.095, 0.12, 1, 0.23, 0.26, 0.31, 1)
+local listTitle = Label(leftPanel, "Your reminders", "GameFontNormalLarge", theme.text)
+listTitle:SetPoint("TOPLEFT", 16, -16)
+local listCount = Label(leftPanel, "0 active / 0 total", nil, theme.muted)
+listCount:SetPoint("TOPRIGHT", -16, -20)
+local listHint = Label(leftPanel, "Check a reminder to enable it.", nil, theme.muted)
+listHint:SetPoint("TOPLEFT", 16, -39)
 
 local rightPanel = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-rightPanel:SetPoint("TOPLEFT", 300, -45)
-rightPanel:SetPoint("BOTTOMRIGHT", -15, 15)
-ApplyBackdrop(rightPanel, 0.02, 0.02, 0.02, 0.6, 0.2, 0.2, 0.2, 0.8)
+rightPanel:SetPoint("TOPLEFT", 440, -86)
+rightPanel:SetPoint("BOTTOMRIGHT", -18, 48)
+ApplyBackdrop(rightPanel, 0.08, 0.095, 0.12, 1, 0.23, 0.26, 0.31, 1)
 
 -- Scroll Frame for Reminder List
 local scrollFrame = CreateFrame("ScrollFrame", "ReminderListScrollFrame", leftPanel, "UIPanelScrollFrameTemplate")
-scrollFrame:SetPoint("TOPLEFT", 6, -6)
-scrollFrame:SetPoint("BOTTOMRIGHT", -26, 6)
+scrollFrame:SetPoint("TOPLEFT", 12, -64)
+scrollFrame:SetPoint("BOTTOMRIGHT", -30, 12)
 
 local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-scrollChild:SetSize(238, 1)
+scrollChild:SetSize(368, 1)
 scrollFrame:SetScrollChild(scrollChild)
 
+local emptyState = CreateFrame("Frame", nil, leftPanel)
+emptyState:SetPoint("TOPLEFT", 30, -130)
+emptyState:SetPoint("BOTTOMRIGHT", -30, 70)
+local emptyIcon = emptyState:CreateTexture(nil, "ARTWORK")
+emptyIcon:SetTexture("Interface\\Icons\\inv_misc_clock_01")
+emptyIcon:SetSize(48, 48)
+emptyIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+emptyIcon:SetAlpha(0.45)
+emptyIcon:SetPoint("TOP", 0, -30)
+local emptyTitle = Label(emptyState, "Make room for a reminder", "GameFontNormal", theme.gold)
+emptyTitle:SetPoint("TOP", emptyIcon, "BOTTOM", 0, -18)
+local emptyHint = Label(emptyState, "Choose your conditions on the right,\nthen add your first reminder.", nil, theme.muted)
+emptyHint:SetPoint("TOP", emptyTitle, "BOTTOM", 0, -10)
+emptyHint:SetJustifyH("CENTER")
+
 -- Form Fields Setup
-local formTitle = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-formTitle:SetPoint("TOPLEFT", 12, -12)
-formTitle:SetText("Add Reminder")
+local formTitle = Label(rightPanel, "New reminder", "GameFontNormalLarge", theme.gold)
+formTitle:SetPoint("TOPLEFT", 18, -16)
 
-local subtitle = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-subtitle:SetPoint("TOPLEFT", 12, -35)
-subtitle:SetText("Conditions:")
-
-local function CreateCheckButton(parent, width, height, labelText)
-    local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
-    check:SetSize(width, height)
-
-    local text = check:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    text:SetPoint("LEFT", check, "RIGHT", 6, 0)
-    text:SetText(labelText)
-    check.text = text
-
-    return check
-end
+local subtitle = Label(rightPanel, "Notify me when all selected conditions match.", nil, theme.muted)
+subtitle:SetPoint("TOPLEFT", 18, -40)
 
 local function SetControlEnabled(control, enabled)
     if enabled then
@@ -483,7 +587,7 @@ local function SetControlEnabled(control, enabled)
         control:SetAlpha(1)
     else
         control:Disable()
-        control:SetAlpha(0.5)
+        control:SetAlpha(0.35)
         if control.ClearFocus then
             control:ClearFocus()
         end
@@ -491,67 +595,86 @@ local function SetControlEnabled(control, enabled)
 end
 
 -- Checkbox conditions setup
-local levelCheck = CreateCheckButton(rightPanel, 20, 20, "Player Level >=")
-levelCheck:SetPoint("TOPLEFT", 12, -52)
+local levelCheck = CreateCheckButton(rightPanel, 18, 18, "Player level at least")
+levelCheck:SetPoint("TOPLEFT", 18, -72)
 
-local levelEditBox = CreateEditBox(rightPanel, 70, 20, true)
-levelEditBox:SetPoint("TOPLEFT", 130, -52)
+local levelEditBox = CreateEditBox(rightPanel, 74, 26, true)
+levelEditBox:SetPoint("TOPRIGHT", -18, -68)
 
-local restedCheck = CreateCheckButton(rightPanel, 20, 20, "Is Rested")
-restedCheck:SetPoint("TOPLEFT", 12, -77)
+local restedCheck = CreateCheckButton(rightPanel, 18, 18, "Resting in an inn or city")
+restedCheck:SetPoint("TOPLEFT", 18, -106)
 
-local cityCheck = CreateCheckButton(rightPanel, 20, 20, "In Big City")
-cityCheck:SetPoint("TOPLEFT", 12, -102)
+local cityCheck = CreateCheckButton(rightPanel, 18, 18, "In a capital city")
+cityCheck:SetPoint("TOPLEFT", 18, -140)
 
-local profCheck = CreateCheckButton(rightPanel, 20, 20, "Profession Skill")
-profCheck:SetPoint("TOPLEFT", 12, -127)
+local profCheck = CreateCheckButton(rightPanel, 18, 18, "Profession skill (in a city)")
+profCheck:SetPoint("TOPLEFT", 18, -174)
+AddTooltip(profCheck, "Profession skill", "Triggers when your skill is at least the chosen rank and you are in a capital city.")
 
-local profDropdown = CreateDropdown(rightPanel, 110, 20, professionList)
-profDropdown:SetPoint("TOPLEFT", 12, -149)
+local profDropdown = CreateDropdown(rightPanel, 180, 26, professionList)
+profDropdown:SetPoint("TOPLEFT", 46, -201)
 
-local skillEditBox = CreateEditBox(rightPanel, 80, 20, true)
-skillEditBox:SetPoint("TOPLEFT", 130, -149)
+local skillEditBox = CreateEditBox(rightPanel, 74, 26, true)
+skillEditBox:SetPoint("TOPRIGHT", -18, -201)
+AddTooltip(skillEditBox, "Minimum skill rank", "Enter the profession skill rank to reach, such as 150.")
 
-local petCheck = CreateCheckButton(rightPanel, 20, 20, "Pet Level >=")
-petCheck:SetPoint("TOPLEFT", 12, -177)
+local petCheck = CreateCheckButton(rightPanel, 18, 18, "Hunter pet level at least")
+petCheck:SetPoint("TOPLEFT", 18, -245)
 
-local petLevelEditBox = CreateEditBox(rightPanel, 80, 20, true)
-petLevelEditBox:SetPoint("TOPLEFT", 130, -177)
+local petLevelEditBox = CreateEditBox(rightPanel, 74, 26, true)
+petLevelEditBox:SetPoint("TOPRIGHT", -18, -241)
 
-local areaCheck = CreateCheckButton(rightPanel, 20, 20, "Area / Sub-area")
-areaCheck:SetPoint("TOPLEFT", 12, -202)
+local areaCheck = CreateCheckButton(rightPanel, 18, 18, "In a specific area")
+areaCheck:SetPoint("TOPLEFT", 18, -279)
 
 local areaLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-areaLabel:SetPoint("TOPLEFT", 32, -224)
+areaLabel:SetPoint("TOPLEFT", 46, -310)
 areaLabel:SetText("Area:")
 
-local areaEditBox = CreateEditBox(rightPanel, 150, 20, false)
-areaEditBox:SetPoint("TOPLEFT", 75, -222)
+local areaEditBox = CreateEditBox(rightPanel, 204, 26, false)
+areaEditBox:SetPoint("TOPRIGHT", -18, -302)
 
 local subAreaLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-subAreaLabel:SetPoint("TOPLEFT", 32, -249)
-subAreaLabel:SetText("Sub:")
+subAreaLabel:SetPoint("TOPLEFT", 46, -342)
+subAreaLabel:SetText("Sub-area:")
 
-local subAreaEditBox = CreateEditBox(rightPanel, 150, 20, false)
-subAreaEditBox:SetPoint("TOPLEFT", 75, -247)
+local subAreaEditBox = CreateEditBox(rightPanel, 204, 26, false)
+subAreaEditBox:SetPoint("TOPRIGHT", -18, -334)
+AddTooltip(subAreaEditBox, "Sub-area (optional)", "Leave blank to match anywhere in the area above.")
 
 -- Custom message fields (always visible)
 local msgLabel = rightPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-msgLabel:SetPoint("TOPLEFT", 12, -295)
-msgLabel:SetText("Custom Message (Optional):")
-local msgEditBox = CreateEditBox(rightPanel, 200, 20, false)
-msgEditBox:SetPoint("TOPLEFT", 12, -310)
+msgLabel:SetPoint("TOPLEFT", 18, -378)
+msgLabel:SetText("Your message |cff969fae(optional)|r")
+msgLabel:SetTextColor(unpack(theme.text))
+local msgEditBox = CreateEditBox(rightPanel, 306, 28, false)
+msgEditBox:SetPoint("TOPLEFT", 18, -397)
 
-local saveBtn = CreateFrame("Button", nil, rightPanel, "UIPanelButtonTemplate")
-saveBtn:SetSize(90, 24)
-saveBtn:SetPoint("BOTTOMLEFT", 12, 12)
-saveBtn:SetText("Add")
+local saveBtn = CreateButton(rightPanel, 178, 30, "Add reminder", "primary")
+saveBtn:SetPoint("BOTTOMLEFT", 18, 16)
 
-local cancelBtn = CreateFrame("Button", nil, rightPanel, "UIPanelButtonTemplate")
-cancelBtn:SetSize(90, 24)
-cancelBtn:SetPoint("BOTTOMLEFT", 110, 12)
-cancelBtn:SetText("Cancel")
+local cancelBtn = CreateButton(rightPanel, 116, 30, "Cancel")
+cancelBtn:SetPoint("BOTTOMRIGHT", -18, 16)
 cancelBtn:Hide()
+
+local previewBtn = CreateButton(frame, 112, 26, "Preview alert")
+previewBtn:SetPoint("BOTTOMRIGHT", -18, 12)
+previewBtn:SetScript("OnClick", function()
+    TriggerAlert("You're all set.\n\n|cff82c5ffYour reminders will appear here when their conditions match.|r")
+end)
+local footer = Label(frame, "Drag the header to move  |  /reminder to open", nil, theme.muted)
+footer:SetPoint("BOTTOMLEFT", 22, 20)
+
+frame:SetScript("OnShow", function(self)
+    self:SetScale(math.min(1, (UIParent:GetWidth() - 32) / 820, (UIParent:GetHeight() - 32) / 620))
+    if RefreshList then RefreshList() end
+end)
+frame:SetScript("OnHide", function()
+    if activeDropdownMenu then activeDropdownMenu:Hide(); activeDropdownMenu = nil end
+    for _, editBox in ipairs({ levelEditBox, skillEditBox, petLevelEditBox, areaEditBox, subAreaEditBox, msgEditBox }) do
+        editBox:ClearFocus()
+    end
+end)
 
 local editingReminder = nil
 
@@ -598,7 +721,7 @@ end)
 
 local function ClearForm()
     editingReminder = nil
-    formTitle:SetText("Add Reminder")
+    formTitle:SetText("New reminder")
 
     levelCheck:SetChecked(false)
     restedCheck:SetChecked(false)
@@ -617,14 +740,28 @@ local function ClearForm()
 
     UpdateFormStates()
 
-    saveBtn:SetText("Add")
+    saveBtn:SetText("Add reminder")
     cancelBtn:Hide()
+    if RefreshList then RefreshList() end
 end
 
 -- -------------------------------------------------------------
 -- Reminder List Manager
 -- -------------------------------------------------------------
 local listRows = {}
+
+local function StyleRow(row, rem, hovered)
+    local selected = editingReminder == rem
+    local color = selected and theme.gold or theme.border
+    row:SetBackdropColor(hovered and 0.13 or 0.10, hovered and 0.15 or 0.12, hovered and 0.19 or 0.15, 1)
+    row:SetBackdropBorderColor(unpack(color))
+    local statusColor = rem.enabled and theme.green or theme.muted
+    row.accent:SetColorTexture(statusColor[1], statusColor[2], statusColor[3], rem.enabled and 0.9 or 0.4)
+    row.status:SetText(selected and "Editing" or (rem.enabled and "Watching" or "Paused"))
+    row.status:SetTextColor(unpack(selected and theme.gold or statusColor))
+    row.text:SetAlpha(rem.enabled and 1 or 0.5)
+    row.msgText:SetAlpha(rem.enabled and 1 or 0.5)
+end
 
 RefreshList = function()
     -- Hide all rows first
@@ -634,49 +771,63 @@ RefreshList = function()
 
     if not ReminderDB or not ReminderDB.reminders then return end
 
+    local enabledCount = 0
+    for _, rem in ipairs(ReminderDB.reminders) do
+        if rem.enabled then enabledCount = enabledCount + 1 end
+    end
+    listCount:SetText(enabledCount .. " active / " .. #ReminderDB.reminders .. " total")
+    emptyState:SetShown(#ReminderDB.reminders == 0)
+
     local yOffset = 0
     for i, rem in ipairs(ReminderDB.reminders) do
         local row = listRows[i]
         if not row then
             row = CreateFrame("Frame", nil, scrollChild, "BackdropTemplate")
-            row:SetSize(238, 40)
-            ApplyBackdrop(row, 0.12, 0.12, 0.12, 0.7, 0.25, 0.25, 0.25, 1)
+            row:SetSize(368, 78)
+            ApplyBackdrop(row, 0.10, 0.12, 0.15, 1, 0.23, 0.26, 0.31, 1)
             row:EnableMouse(true)
+            local accent = Fill(row, theme.green)
+            accent:SetPoint("TOPLEFT", 1, -1)
+            accent:SetPoint("BOTTOMLEFT", 1, 1)
+            accent:SetWidth(2)
+            row.accent = accent
 
             -- Checkbox for enabled/disabled
-            local check = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
-            check:SetSize(20, 20)
-            check:SetPoint("LEFT", 5, 0)
+            local check = CreateCheckButton(row, 18, 18)
+            check:SetPoint("TOPLEFT", 12, -12)
+            AddTooltip(check, "Enable reminder", "Uncheck to pause this reminder. Check it again to watch its conditions.")
             row.check = check
 
             -- Description text
             local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            text:SetPoint("LEFT", check, "RIGHT", 5, 0)
-            text:SetPoint("RIGHT", -88, 0)
+            text:SetPoint("TOPLEFT", 40, -14)
+            text:SetPoint("TOPRIGHT", -12, -14)
             text:SetJustifyH("LEFT")
             text:SetWordWrap(true)
+            text:SetTextColor(unpack(theme.text))
             row.text = text
 
             -- Custom message text
             local msgText = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-            msgText:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 30, 5)
-            msgText:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -88, 5)
+            msgText:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -8)
+            msgText:SetPoint("TOPRIGHT", text, "BOTTOMRIGHT", 0, -8)
+            msgText:SetHeight(14)
             msgText:SetJustifyH("LEFT")
             msgText:SetWordWrap(false)
+            msgText:SetTextColor(unpack(theme.muted))
             row.msgText = msgText
+            local status = Label(row, "Watching", nil, theme.green)
+            status:SetPoint("BOTTOMLEFT", 12, 16)
+            row.status = status
 
             -- Edit button
-            local editBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-            editBtn:SetSize(38, 18)
-            editBtn:SetPoint("RIGHT", -44, 0)
-            editBtn:SetText("Edit")
+            local editBtn = CreateButton(row, 50, 24, "Edit")
+            editBtn:SetPoint("BOTTOMRIGHT", -82, 10)
             row.editBtn = editBtn
 
             -- Delete button
-            local delBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-            delBtn:SetSize(36, 18)
-            delBtn:SetPoint("RIGHT", -5, 0)
-            delBtn:SetText("Del")
+            local delBtn = CreateButton(row, 62, 24, "Remove", "danger")
+            delBtn:SetPoint("BOTTOMRIGHT", -12, 10)
             row.delBtn = delBtn
 
             listRows[i] = row
@@ -690,31 +841,27 @@ RefreshList = function()
                 rem.triggered = false -- reset trigger state so it can re-evaluate
             end
             PlaySound(856)
+            RefreshList()
         end)
 
-        -- Tooltip showing custom message on row hover
+        -- Keep the full conditions and message available even when the preview is truncated.
         row:SetScript("OnEnter", function(self)
-            if rem.message and rem.message ~= "" then
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                GameTooltip:SetText("Custom Message:", 1, 0.82, 0)
-                GameTooltip:AddLine(rem.message, 1, 1, 1, true)
-                GameTooltip:Show()
-            end
+            StyleRow(self, rem, true)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText("Reminder conditions", unpack(theme.gold))
+            GameTooltip:AddLine(self.text:GetText(), 0.91, 0.92, 0.94, true)
+            if rem.message and rem.message ~= "" then GameTooltip:AddLine("\n" .. rem.message, 0.65, 0.78, 0.91, true) end
+            GameTooltip:Show()
         end)
-        row:SetScript("OnLeave", function()
+        row:SetScript("OnLeave", function(self)
+            StyleRow(self, rem, false)
             GameTooltip:Hide()
         end)
 
-        -- Re-anchor dynamically depending on whether there is a message
-        row.text:ClearAllPoints()
         if rem.message and rem.message ~= "" then
-            row.text:SetPoint("TOPLEFT", row, "TOPLEFT", 30, -5)
-            row.text:SetPoint("TOPRIGHT", row, "TOPRIGHT", -88, -5)
-            row.msgText:SetText(rem.message)
+            row.msgText:SetText(rem.message:gsub("[\r\n]+", " "))
             row.msgText:Show()
         else
-            row.text:SetPoint("LEFT", row.check, "RIGHT", 5, 0)
-            row.text:SetPoint("RIGHT", row, "RIGHT", -88, 0)
             row.msgText:Hide()
         end
 
@@ -723,31 +870,33 @@ RefreshList = function()
         local conditions = rem.conditions or { { type = rem.type, value = rem.value, profession = rem.profession } }
         for _, cond in ipairs(conditions) do
             if cond.type == "level" then
-                table.insert(condDescs, "Lvl >= |cfffff569" .. (cond.value or 0) .. "|r")
+                table.insert(condDescs, "Level |cffe6ba6e" .. (cond.value or 0) .. "+|r")
             elseif cond.type == "rested" then
                 table.insert(condDescs, "Rested")
             elseif cond.type == "city" then
-                table.insert(condDescs, "In City")
+                table.insert(condDescs, "In a capital city")
             elseif cond.type == "profession" then
-                table.insert(condDescs, (cond.profession or "Unknown") .. " >= |cfffff569" .. (cond.value or 0) .. "|r")
+                table.insert(condDescs, (cond.profession or "Unknown") .. " |cffe6ba6e" .. (cond.value or 0) .. "+|r in a city")
             elseif cond.type == "pet_level" then
-                table.insert(condDescs, "Pet >= |cfffff569" .. (cond.value or 0) .. "|r")
+                table.insert(condDescs, "Pet level |cffe6ba6e" .. (cond.value or 0) .. "+|r")
             elseif cond.type == "area" then
                 if cond.subArea and trim(cond.subArea) ~= "" then
-                    table.insert(condDescs, "|cfffff569" .. cond.area .. "|r (|cfffff569" .. cond.subArea .. "|r)")
+                    table.insert(condDescs, "|cffe6ba6e" .. cond.area .. "|r (|cffe6ba6e" .. cond.subArea .. "|r)")
                 else
-                    table.insert(condDescs, "|cfffff569" .. cond.area .. "|r")
+                    table.insert(condDescs, "|cffe6ba6e" .. cond.area .. "|r")
                 end
             end
         end
-        desc = table.concat(condDescs, ", ")
+        desc = table.concat(condDescs, "  |cff7d8796&|r  ")
         row.text:SetText(desc)
+        row:SetHeight(math.max(74, row.text:GetStringHeight() + 56 + (row.msgText:IsShown() and 22 or 0)))
+        StyleRow(row, rem, false)
 
         -- Hooks
         row.editBtn:SetScript("OnClick", function()
             PlaySound(856)
             editingReminder = rem
-            formTitle:SetText("Edit Reminder")
+            formTitle:SetText("Edit reminder")
 
             -- Reset all checkboxes first
             levelCheck:SetChecked(false)
@@ -789,8 +938,9 @@ RefreshList = function()
 
             UpdateFormStates()
 
-            saveBtn:SetText("Save")
+            saveBtn:SetText("Save changes")
             cancelBtn:Show()
+            RefreshList()
         end)
 
         row.delBtn:SetScript("OnClick", function()
@@ -807,12 +957,14 @@ RefreshList = function()
             RefreshList()
         end)
 
+        row:ClearAllPoints()
         row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yOffset)
         row:Show()
-        yOffset = yOffset + 44
+        yOffset = yOffset + row:GetHeight() + 8
     end
 
-    scrollChild:SetHeight(yOffset > 0 and yOffset or 1)
+    scrollChild:SetHeight(math.max(1, yOffset - 8))
+    scrollFrame:SetVerticalScroll(math.min(scrollFrame:GetVerticalScroll(), math.max(0, scrollChild:GetHeight() - scrollFrame:GetHeight())))
 end
 
 -- Save / Add Button Action
