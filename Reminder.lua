@@ -90,9 +90,38 @@ local function IsInBigCity()
     return false
 end
 
+local professionSkillIDs = {
+    ["alchemy"] = 171,
+    ["blacksmithing"] = 164,
+    ["cooking"] = 185,
+    ["enchanting"] = 333,
+    ["engineering"] = 202,
+    ["first aid"] = 129,
+    ["fishing"] = 356,
+    ["herbalism"] = 182,
+    ["leatherworking"] = 165,
+    ["mining"] = 186,
+    ["skinning"] = 393,
+    ["tailoring"] = 197,
+}
+
 local function GetProfessionSkillRank(name)
     if not name or name == "" then return 0 end
     name = name:lower()
+
+    -- Forever exposes skill data through C_SkillInfo instead of the old globals.
+    -- Looking up the ID also works when the Skills panel headers are collapsed.
+    if C_SkillInfo and C_SkillInfo.GetSkillLineInfoByID then
+        local skillID = professionSkillIDs[name]
+        if not skillID then return 0 end
+        local info = C_SkillInfo.GetSkillLineInfoByID(skillID)
+        return info and info.rank or 0
+    end
+
+    -- Keep the skill-window scan for Classic Era clients with the legacy API.
+    if not (GetNumSkillLines and GetSkillLineInfo and ExpandSkillHeader and CollapseSkillHeader) then
+        return 0
+    end
 
     -- Expand collapsed headers to scan all skills
     local collapsedHeaders = {}
