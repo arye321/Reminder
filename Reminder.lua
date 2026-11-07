@@ -886,7 +886,7 @@ if LDB then
     reminderLDB = LDB:NewDataObject("Reminder", {
         type = "launcher",
         text = "Reminder",
-        icon = "Interface\\Icons\\inv_misc_clock_01",
+        icon = 134376,
         OnClick = function(self, button)
             if button == "LeftButton" then
                 if ReminderFrame:IsShown() then
